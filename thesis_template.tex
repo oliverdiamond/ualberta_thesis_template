@@ -1,19 +1,9 @@
 %%======================================================================
-%% A template for master's/doctoral thesis. (Shivam Garg, 2021)
-%%----------------------------------------------------------------------
-%% As far as I'm aware, it satisfies the requirements given in https://www.ualberta.ca/graduate-studies/media-library/current-students/academicrequirements/thesisrequirementandpreparation/2016-03-29-fgsrminimumthesisformattingrequirements.pdf.
-%% 
-%% Might not work with an old LaTeX version. I used it successfully with TeX Live 2021 on Ubuntu. (Overleaf always has the latest version.)
-%%
-%% A thesis created using this template is available here: https://svmgrg.github.io/documents/alternate_estimator_thesis_2021.pdf.
-%%======================================================================
-
-%%======================================================================
 %% For PDF/A conversion (file meta-data)
 %%----------------------------------------------------------------------
 \begin{filecontents*}[overwrite]{\jobname.xmpdata}
-  \Title{Title of your thesis}
-  \Author{Author name}
+  \Title{Beyond Fixed Learning Rates: Stochastic Line Search and Trust Region in Deep Reinforcement Learning}
+  \Author{Oliver Diamond}
   \Language{en-US}
   \Subject{Computing Science}
 \end{filecontents*}
@@ -119,9 +109,9 @@
 
 \begin{titlepage}
   \centering
-  \textbf{\large{Title of your thesis}}
+  \textbf{\large{Beyond Fixed Learning Rates: Stochastic Line Search and Trust Region in Deep Reinforcement Learning}}
   \vskip.5in by \vskip.5in
-  \large{Author name}
+  \large{Oliver Diamond}
 
   \vfill \vfill
   A thesis submitted in partial fulfillment of the requirements for the degree of
@@ -131,7 +121,7 @@
   \vskip.3in
   University of Alberta
   \vfill \vfill
-  $\copyright$ Author name, 2021
+  $\copyright$ Oliver Diamond, 2026
 \end{titlepage}
 
 % \linenumbers %% uncomment if you want to have line numbers (for review)
@@ -161,77 +151,52 @@ Add ack here.
 \setcounter{page}{1}
 \renewcommand{\thepage}{\arabic{page}} % arabic numerals for page counter
 
-Start introduction from here.\footnote{Writing help is available here: \url{https://terrytao.wordpress.com/advice-on-writing-papers/}.}
+% Dont remove until you add one of your own citations.
+Start introduction from here \cite{sorg2010linear}.
 
 \section{This is the First Section}
 Contents...
 
-\begin{figure}[!hbp]
-  \centering
-  \includegraphics[scale=0.4]{figures/drawing.pdf}
-  \caption{Figure caption.} 
-  \label{fig: figure_name}
-\end{figure}
-
-\begin{algorithm}[!hbt]
-  \caption{Algorithm caption.}
-  \label{alg: alg_name}
-  \begin{algorithmic}
-    \State Pseudocode line 1
-    \State Pseudocode line 2
-  \end{algorithmic}
-\end{algorithm}
-
-\begin{restatable}{thm}{thm_name} \label{thm: thm_name}
-  Theorem statement.
-\end{restatable}
-\begin{proof}
-  Add the proof here.
-\end{proof}
-
-\begin{table}[!hbt]
-  \centering
-  \begin{tabular}{c|c|c}
-    \textbf{Col 1}& \textbf{Col 2} & \textbf{Col 3} \\
-    \hline \hline
-    text & text & text \\
-    \hline
-    text & text & text \\
-  \end{tabular}
-  \caption{Table caption.} 
-  \label{table: caption}
-\end{table}
-
-\section{This is the Second Section}
-Contents...
-
-\chapter{Another Chapter} \label{sec: another_chap}
-If you wish to, you can also use a separate \texttt{.tex} file for each chapter, and then include a reference to that file here.
-
-%% Following uses manually added references. If you prefer, replace this with BibTeX.
-% \chapter*{References}
-% \addcontentsline{toc}{chapter}{References}
-
-% \medskip
-% %% \small
-
-% \begin{list}{}{%
-%     \setlength{\topsep}{0pt}%
-%     \setlength{\leftmargin}{0.2in}%
-%     \setlength{\listparindent}{-0.2in}%
-%     \setlength{\itemindent}{-0.2in}%
-%     \setlength{\parsep}{\parskip}%
-%   }%
-  
-% \item[] Einstein, A., Newton, I., Feynman R.P. (2002). Lectures on the unified theory of physics. \textit{Physical Review, 92}(5), 1324.
-  
-% \item[] Einstein, A., Newton, I., Feynman R.P. (2003). More lectures on the unified theory of physics. \textit{Physical Review, 99}(3), 1324.
-% \end{list}
-
-This is an example reference \cite{sorg2010linear}.
-
 \renewcommand{\bibname}{References}
 \bibliography{ref}
-\bibliographystyle{alpha}
+\bibliographystyle{IEEEtran}
 
 \end{document}
+
+%%%%%% USEFUL TEMPLATE CODE %%%%%%
+
+% \begin{figure}[!hbp]
+%   \centering
+%   \includegraphics[scale=0.4]{figures/drawing.pdf}
+%   \caption{Figure caption.} 
+%   \label{fig: figure_name}
+% \end{figure}
+
+% \begin{algorithm}[!hbt]
+%   \caption{Algorithm caption.}
+%   \label{alg: alg_name}
+%   \begin{algorithmic}
+%     \State Pseudocode line 1
+%     \State Pseudocode line 2
+%   \end{algorithmic}
+% \end{algorithm}
+
+% \begin{restatable}{thm}{thm_name} \label{thm: thm_name}
+%   Theorem statement.
+% \end{restatable}
+% \begin{proof}
+%   Add the proof here.
+% \end{proof}
+
+% \begin{table}[!hbt]
+%   \centering
+%   \begin{tabular}{c|c|c}
+%     \textbf{Col 1}& \textbf{Col 2} & \textbf{Col 3} \\
+%     \hline \hline
+%     text & text & text \\
+%     \hline
+%     text & text & text \\
+%   \end{tabular}
+%   \caption{Table caption.} 
+%   \label{table: caption}
+% \end{table}
