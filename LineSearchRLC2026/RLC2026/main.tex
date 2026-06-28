@@ -1,0 +1,896 @@
+% RLJ main.tex Version 2026.1
+
+\documentclass[10pt]{article} % For LaTeX2e
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% AUTHOR: Select ONE option:
+%      [accepted]{rlj} --> for camera ready (after peer review, if accepted)
+%      {rlj}           --> for submission
+%      [preprint]{rlj} --> to de-anonymize and remove references to RLJ/RLC
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{rlj}           % Should be uncommented for submission
+%\usepackage[accepted]{rlj} % Should be uncommented for the camera-ready
+%\usepackage[preprint]{rlj} % Should be uncommented for preprint versions
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% WARNING: The following packages are already included in the
+%          rlj.sty style file:
+%
+%  1. fancyhdr  - For controlling header/footers
+%  2. natbib    - For formatting the bibliography
+%  3. enumitem  - To customize the appearance of lists
+%  4. fontenc (with option [T1]) - Allows for proper hyphenation and accents
+%  5. times     - Times new roman font
+%  6. ragged2e  - Used to justify text
+%  7. tcolorbox - Used to create boxes on cover page
+%  8. hyperref  - Configures hyperlinks throughout (e.g., links to references)
+%  9. xcolor    - Used to define custom colors for links and boxes
+%  10. amsmath  - Not used, but conflicts with lineno, so we include (and patch) it for authors
+%  11. etoolbox - Included in the amsmath + lineno patch
+%  12. lineno   - For adding line numbers when in submission
+%
+% You do not need to include them again in your main.tex.
+% Including them again may lead to conflicts or compilation errors.
+% Additionally, avoid loading packages that might conflict with these.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Recommended (but not required) packages
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\usepackage{amssymb}            % Defines common symbols like \mathbb R
+\usepackage{mathtools}          % Extends amsmath, providing common math tools
+\usepackage{mathrsfs}           % Enables \mathscr, which can work in cases that \mathcal does not
+%\mathtoolsset{showonlyrefs}     % Only number equations that are referenced (optional)
+\usepackage{graphicx}           % For including images
+\usepackage{subcaption}         % Allows for the use of subfigures and subcaptions
+\usepackage[space]{grffile}     % For spaces in image names
+\usepackage{url}                % For displaying URLs
+\usepackage{lipsum}             % For placeholder text
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{wrapfig}
+\usepackage{amsthm}
+% Added these from Samuel's ICML template
+\usepackage{bm}
+\usepackage{xcolor}
+
+\usepackage[scr=euler,cal=dutchcal,bb=boondox,frak=euler]{mathalpha}
+
+\definecolor{Yellow}{HTML}{df8e1d}
+\definecolor{Maroon}{HTML}{e64553}
+\newcommand{\tocite}[1]{{\color{Maroon} (cite: #1)}}
+\newcommand{\todo}[1]{{\color{Yellow} (todo #1)}}
+
+\newcommand{\Naturals}{\mathbb{N}}
+\newcommand{\Reals}{\mathbb{R}}
+\newcommand{\Realsn}{\Reals^n}
+\newcommand{\xstar}{x^\star}
+\newcommand{\xAt}[1]{x_{#1}}
+\newcommand{\update}{u}
+\newcommand{\updateAt}[1]{\update_{#1}}
+\newcommand{\stepSize}{\eta}
+\newcommand{\stepSizeInit}{\eta_0}
+\newcommand{\stepSizeAt}[1]{\stepSize_{#1}}
+
+\newcommand{\inner}[2]{\langle #1, #2 \rangle}
+\newcommand{\stateSpace}{\mathscr{S}}
+\newcommand{\actionSpace}{\mathscr{A}}
+\newcommand{\rewardFunction}{\mathscr{R}}
+\newcommand{\dynamics}{\mathscr{P}}
+\newcommand{\startStateDistribution}{d_{0}}
+
+\newcommand{\q}{q}
+\newcommand{\qfn}{\q_{\pi}}
+\newcommand{\qparams}{{\bm w}}
+\newcommand{\qparam}{\q_\qparams}
+\renewcommand{\v}{v}
+\newcommand{\vfn}{\v_{\pi}}
+\newcommand{\vparams}{{\bm \phi}}
+\newcommand{\vparam}{\v_\vparams}
+
+\newcommand{\Rn}{\mathbb{R}^{n}}
+
+\newcommand{\cf}[1]{\textcolor{purple}{#1}}
+
+\newcommand{\state}{s}
+\newcommand{\stateAt}[1]{s_{#1}}
+\newcommand{\action}{a}
+\newcommand{\actionAt}[1]{a_{#1}}
+\newcommand{\reward}{r}
+\newcommand{\rewardAt}[1]{r_{#1}}
+\newcommand{\startState}{\state_{0}}
+
+\newcommand{\discount}{\gamma}
+\newcommand{\distributionOver}[1]{\Delta_{#1}}
+
+
+% theory
+\usepackage{cleveref}
+\usepackage{booktabs}
+\crefname{lemma}{lemma}{lemmas}
+\crefname{assumption}{assumption}{assumptions}
+\crefname{theorem}{theorem}{theorems}
+\newtheorem{theorem}{Theorem}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{example}[theorem]{Example}
+\newtheorem{observation}[theorem]{Observation}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{claim}[theorem]{Claim}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{fact}[theorem]{Fact}
+\newtheorem{assumption}[theorem]{Assumption}
+% added by kartik sreenivasan
+\newcommand{\eg}{{\it e.g.}, }
+\newcommand{\ie}{{\it i.e.}, }
+\newcommand{\bP}{\mathbf{P}}
+
+\newcommand{\hL}{\hat{L}}
+
+\newcommand{\bF}{\mathbf{F}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\EE}{\mathbb{E}}
+\newcommand{\ZZ}{\mathbb{Z}}
+
+\newcommand{\spaced}{\ \ \ \ \ \ \ }
+\newcommand{\RR}{\mathbb{R}}
+\newcommand{\II}{\mathbb{I}}
+\newcommand{\mbR}{\mathbb{R}}
+\newcommand{\PP}{\mathbb{P}}
+\newcommand{\VV}{\mathbb{V}}
+\newcommand{\cA}{\mathcal{A}}
+\newcommand{\cL}{\mathcal{L}}
+\newcommand{\cN}{\mathcal{N}}
+\newcommand{\cZ}{\mathcal{Z}}
+\newcommand{\cY}{\mathcal{Y}}
+\newcommand{\cH}{\mathcal{H}}
+\newcommand{\cS}{\mathcal{S}}
+\newcommand{\cU}{\mathcal{U}}
+\newcommand{\cX}{\mathcal{X}}
+\newcommand{\cI}{\mathcal{I}}
+\newcommand{\cT}{\mathcal{T}}
+\newcommand{\cF}{\mathcal{F}}
+\newcommand{\cD}{\mathcal{D}}
+\newcommand{\cM}{\mathcal{M}}
+\newcommand{\scD}{\textsc{D}}
+\newcommand{\snorm}{\text{span}}
+\newcommand{\var}{\mathrm{Var}}
+\newcommand{\norm}[1]{\left \lVert #1 \right \rVert}
+\newcommand{\IS}{\text{IS}}
+\newcommand{\SW}{\text{SW}}
+\newcommand{\IW}{\text{IW}}
+\newcommand{\KL}{\text{KL}}
+
+\newcommand{\infn}[1]{\left \lVert #1 \right \rVert_{\infty}}
+
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\argmin}{argmin}
+
+
+
+
+\usepackage{amsmath}
+%\DeclareMathOperator*{\argmin}{arg\,min}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% AUTHOR: Fill in the following meta-data
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Enter the title of your paper:
+\title{Beyond Fixed Learning Rates: Stochastic Line Search for Deep Reinforcement Learning}
+
+% The "running title" will be displayed in the header on every-other page.
+% It is typically either the same as the title or a shorter version of the title.
+% Enter your running title here:
+\setrunningtitle{Beyond Fixed Learning Rates: Stochastic Line Search for Deep Reinforcement Learning}
+
+% WARNING: Authors must not appear in the submitted version. They should be hidden
+% as long as the rlj package is used without the [accepted] or [preprint] options.
+% Non-anonymous submissions will be rejected without review.
+
+% Enter the author names below. 
+% NOTE: Denote affiliations using superscripts as in the provided example.
+% NOTE: Use \textscript{1,2,3} instead of $^{1,2,3}$.
+%       - Failure to do so will cause affiliation superscripts to appear on the cover page for camera-ready and preprint versions.
+\author{Samuel Neumann\textsuperscript{1,2}, Oliver Diamond\textsuperscript{1,2}, Chen Fan\textsuperscript{1,2}, Martha White\textsuperscript{1,2,3}, Adam White\textsuperscript{1,2,3}}
+
+% NOTE: For camera-ready and preprint versions, the cover page includes author names but not affiliations.
+% It automatically removes the superscripts for affiliations.
+% If the automatic process breaks (e.g., if an author name should include a superscript), you can manually define the author string to appear on the cover page by uncommenting the following line.
+%\coverPageAuthor{Marlos C. Machado, Philip S. Thomas, Lorem Ipsum}
+
+% Author emails, which can be clustered if they have shared endings as in this example
+\emails{\{sfneuman, odiamond, cfan8, whitem, amw8\}@ualberta.ca}
+
+% Author affiliations, in the order the occur
+% The inclusion of state/province, etc. is optional.
+% The inclusion of multiple affiliations is optional.
+%   - List multiple affiliations with comma-separated numbers as in the example.
+\affiliations{
+$^{1}$\textbf{Department of Computing Science, University of Alberta, Canada}\\
+$^{2}$\textbf{Alberta Machine Intelligence Institute (Amii)}\\
+$^{3}$\textbf{CIFAR AI Chair}\\
+% The following two lines are optional and can be commented out
+% \par % If including additional comments like below, use \par to add some whitespace. 
+% $^\dagger$ Additional comments can be added like this, e.g., indicating equal contribution
+}
+
+\contribution{
+    We introduce a simple parallel stochastic line search for deep reinforcement learning to automatically adjust the step-size parameter and adapt it over the course of the experiment, avoiding the need to tune the step-size and achieving comparable performance.
+    }
+    {
+    % Caveat:
+    Popular sequential backtracking line searches in supervised learning often select the largest valid step size even though further backtracking could result in more improvement \citep{vaswani2019painless,galli2023monotone}. 
+    % These techniques do not take advantage of the parallel nature of backtracking, which can provide valuable information about the objective function for nearly free. 
+    While not a technically complex change, the algorithm we present has not been studied before. We only investigate line search with RMSProp and SGD as the Adam update does not always guarantee a descent direction. Prior work in the supervised setting investigated some mitigations for this ~\citep{kenneweg2024improving,shea2024so,fan2023msl}, but we leave this extension to future work.
+    }
+
+\contribution{
+    % Contribution
+    %Leveraging the parallel nature of line searches, we demonstrate in the reinforcement learning setting that starting the line search from large step sizes can improve upon popular initialization heuristics from supervised learning.
+    We prove that our (parallel) approach converges linearly under an interpolating condition matching the rate of previous (stochastic) line-search methods \citep{vaswani2019painless,galli2023monotone}. Our analysis takes the actual implementation of the step-size resetting scheme into consideration whereas previous works do not.  
+    % We then analyze a novel approach for choosing step sizes according to the Armijo condition above (and related conditions).
+    }
+    {
+    % Caveat:
+   % Work in the supervised learning settings has often focused on choosing sufficiently small initial step sizes for line searches \citep{vaswani2019painless,galli2023monotone} to improve computation. Yet, the entire line search can be easily parallelized on modern accelerator hardware.
+    %Further, whereas past work has found these kinds of adaptive step size methods to underperform constant step size baselines \citep{roulet2024stepping}, we find that they are indeed useful for control problems for a fixed batch size.
+    % Although similar greedy methods have been analyzed before \citep{roulet2024stepping}, they typically require curvature information, whereas our method does not.
+    The step-size resetting schemes in \citet{vaswani2019painless} and \citet{galli2023monotone} introduce extra hyperparameters, and they were not explicitly considered in previous analysis. The resetting scheme in our method is much simpler and is naturally included in our analysis.\
+    }
+
+\contribution{
+    % Contribution
+   % We outline a significant failure in DRL where the line searches can produce parameters that lie in sharp regions of the objective function.
+   We provide perhaps the most extensive empirical study to date of applying line search methods in deep RL. We investigate the effectiveness of line search for supervised offline Monte Carlo prediction with Atari 2600 and Mujoco datasets, offline $\lambda$-return prediction with Mujoco datasets, and control with PPO in Mujoco. We provide a case study highlighting how line search can produce parameters that lie in sharp regions of the objective function in DRL.    
+    }
+    {
+    % Context:
+    Previously line search was used with TRPO~\citep{schulman2017trust} and tabular RL~\citep{lu2024towards} and
+    sharpness has been studied in batch supervised learning \citep{roulet2024stepping,cohen2021gradient}.
+    %, we find that line search methods can result in learning parameters in sharp regions of the objective function for state-value prediction with Monte Carlo targets. Although this is a similar finding to the supervised learning setting, the observation has yet to be made in the RL setting. \todo{I am not sure this is a contribution, because the data is Monte Carlo for state-value prediction... SL}
+    }
+
+% Include a list of keywords for the topic of the paper:
+\keywords{Machine Learning, Reinforcement Learning, Armijo, Line Search} % Your keywords
+
+% Define the summary that appears on the cover page.
+\summary{
+Deep reinforcement learning (DRL) algorithms are notoriously sensitive to the step-size parameter, often requiring manual tuning for new environments to avoid suboptimal performance. While common defaults exist for suites like MuJoCo or ALE, recent studies demonstrate that fixed step-sizes leave significant performance on the table. Existing meta-gradient solutions can address this but are often data or compute intensive. In this paper, we propose a lightweight alternative: line search with a modified acceptance criterion to make it more effective for DRL. Our method layers directly onto standard optimizers like RMSprop to dynamically adjust step-sizes with minimal computational overhead. Our line search algorithm uses a less restrictive nonmontone condition to select amongst a broader set of stepsizes than the more commonly used Armijo condition and leverages a parallel search to select stepsizes that more effectively reduce the loss. 
+% We prove this modified line search algorithm remains convergent. 
+We prove that our proposed method remains convergent and provide insights into why the choices in our algorithm matter, highlighting issues with sharp local minima and interplay with minibatch size. We demonstrate that our approach matches or exceeds performance of tuned fixed step sizes baselines across several prediction and control problems. 
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Begin document, create title and abstract
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{document}
+
+\makeCover  % Create the cover page
+\maketitle  % Make the title section
+
+\begin{abstract}
+Deep reinforcement learning (DRL) algorithms are notoriously sensitive to the step-size parameter, often requiring manual tuning for new environments to avoid suboptimal performance. While common defaults exist for suites like MuJoCo or ALE, recent studies demonstrate that fixed step-sizes leave significant performance on the table. Existing meta-gradient solutions can address this but are often data or compute intensive. In this paper, we propose a lightweight alternative: line search with a modified acceptance criterion to make it more effective for DRL. Our method layers directly onto standard optimizers like RMSprop to dynamically adjust step-sizes with minimal computational overhead. Our line search algorithm uses a less restrictive nonmontone condition to select amongst a broader set of stepsizes than the more commonly used Armijo condition and leverages a parallel search to select stepsizes that more effectively reduce the loss. 
+We prove that our proposed method remains convergent and provide insights into why the choices in our algorithm matter, highlighting issues with sharp local minima and interplay with minibatch size. We demonstrate that our approach matches or exceeds performance of tuned fixed step size baselines across several prediction and control problems.
+\end{abstract}
+% Mar 1, 2026
+%Deep reinforcement learning (DRL) algorithms are notoriously sensitive to the step-size parameter, often requiring manual tuning for new environments to avoid suboptimal performance. While common defaults exist for suites like MuJoCo or ALE, recent studies demonstrate that fixed step-sizes leave significant performance on the table. Existing meta-gradient solutions can address this but are often data or compute intensive. In this paper, we propose a lightweight alternative by extending backtracking line search with the Armijo condition to DRL. Our method layers directly onto standard optimizers like Adam and RMSprop to dynamically adjust step-sizes with minimal computational overhead. Across TD-learning, DQN, and PPO, our approach matches or exceeds the performance of manually tuned base methods while completely eliminating the need for step-size tuning across diverse problems.
+
+\section{Introduction}
+
+Deep reinforcement learning (RL) algorithms are notoriously sensitive to hyperparameters, and often require manual
+tuning on each new environment to avoid poor performance~\citep{eimer2023hyperparameters,adkins2024method}. The step-size hyperparameter is particularily challenging because its best value is determined by the optimization landscape, and the best performance is typically achieved by changing it over time. Even modern optimizers like Adam and RMSprop suffer from step size
+sensitivity with deep RL algorithms~\citep{ellis2024adam,donancio2024dynamic,jordan2024cliff}. In fact, both algorithms can completely fail to learn in non-stationary prediction settings with a constant step-size~\citep{jacobsen2019meta,degris2024step}, which is concerning due to the non-stationarity inherent in policy optimization. 
+
+In practice, tuning step sizes is common for deep RL algorithms. Perhaps the most common
+approach to tuning is grid search, where multiple hyperparameter combinations are tested. Grid searches can be
+effective but often require a simulator and parallelism to function, limiting their applicability. Further, these kinds of hyperparameter searches are
+often not possible for agents deployed in the real world, like industrial control ~\citep{luo2022controlling,janjua2024gvfs}, where testing multiple
+hyperparameter configurations could be time consuming or infeasible. Finally, grid searches typically find a fixed step size that
+works well on average throughout learning and across runs -- not a step size tailored to a specific agent on a specific time step.
+Bayesian and evolutionary methods can more intelligently and efficiently identify good fixed hyperparameter settings than
+grid searches, but nevertheless suffer from similar drawbacks in terms of the need for extensive computation and applicability to simulators~\citep{parker2022automated}. Fixed default step sizes exist for common
+benchmarking suites like Brax, MuJoCo, or the Arcade Learning Environment. However, different repositories use slightly different settings and recent work has demonstrated that these
+defaults 1) typically do not work across tasks, 2) are not optimized for individual environments, and 3) are sensitive to
+small changes \citep{patterson2024chtb,adkins2024method,eimer2023hyperparameters}. The use of defaults or the need for optimization/sweeps on a new task represents a major obstacle to deployment of these deep RL methods in new domains, especially by non RL experts.
+
+%Meta-gradient approaches offer some promise~\citep{jacobsen2019meta,kearney2018tidbd,xu2018meta} but typically require significant increases training time and also have sensitivie hyper-hyperparameters.
+
+Meta-gradient approaches frame
+hyperparameter tuning as an optimization problem, iteratively learning hyperparameters to optimize a hyperparameter
+objective. Numerous meta-learning approaches specialized to learning step-sizes have been explored over the years, including Incremental Delta-Bar-Delta~\citep{sutton1992adapting}, Stochastic Meta Descent~\citep{schraudolph1999local}, Autostep \citep{mahmood2012tuning}, AdaGain \citep{jacobsen2019metadescent}, and similar extensions to Temporal-Difference
+(TD) learning \citep{kearney2018tidbd,young2019metatrace,thill2015temporal}.
+In Deep RL, meta-gradients have been used to learn effective discount factors, $\lambda$ returns, update targets for value
+functions and policies, full objective functions, intrinsic rewards, and other hyperparameters.
+\citep{xu2018meta,xu2020meta,oh2020discovering,kirsch2020improving,wang2020metasac,zheng2020what,bonnet2022debiasing,zahavy2020self,zheng2018learning}.
+Meta-gradients have even been used to learn the optimization algorithm itself
+\citep{andrychowicz2016learning,lan2024learning}. %Some of these meta-gradient approaches can be difficult to apply to nonlinear function approximation, and they often introduce their own meta-hyperparameters which can be sensitive
+These methods are promising but often significantly increase training time and  have sensitive hyper-hyperparameters that require tuning.
+%\citep{mahmood2012tuning,bonnet2022debiasing,parkerholder2022automated,degris2024stepsize} .
+
+In the optimization literature, a more common method of selecting step sizes is to use a backtracking
+line search \citep{nocedal2006numerical}. Line searches search along a given update direction $\update$ for a step size
+which reduces the objective value sufficiently. One of the most popular conditions for accepting such a step size is the
+\textit{Armijo Condition}, which selects step sizes $\stepSize > 0$ that satisfy
+%
+\begin{equation}
+	f(x + \stepSize u) < f(x) + \stepSize c \inner{\nabla f(x)}{u} \qquad c \in (0, 1)
+	\label{eq:armijo_cond}
+\end{equation}
+%
+where $f$ is a given objective function.
+Line searches are agnostic to the way in which update directions are
+produced, often only requiring them to be descent directions on the objective. In this way, they are 
+general and can be layered on top of popular modern optimizers such as RMSprop \citep{Hinton2012lecture} to automate step size selection and adapt the step-size over the course of an experiment.
+Although originally designed for deterministic objectives, line search methods have been
+extended to the stochastic setting in supervised learning and work in the tabular RL case~\citep{lu2024towards}, demonstrating impressive empirical performance on
+popular benchmarks and enjoying robust theoretical guarantees \citep{vaswani2019painless,galli2023monotone,shea2024so,vaswani2020adaptive,fox2024glocal,vaswani2025armijo,fan2023bisls,jiang2023adaptive}. Outside a minor role in the TRPO algorithm~\citep{schulman2017trust}, to the best of our knowledge stochastic line search methods have not been successfully combined with modern optimizers in deep RL. 
+
+
+In this paper, we explore several different line search methods in prediction and control settings in RL. Compared with supervised learning, RL problems feature complex and unfriendly loss functions that can change with time either due to policy optimization or bootstrapping. In addition, losses in RL often have sharp local-minima that are particularily problematic for line search methods, as we demonstrate in our experiments. We explore efficient implementations of the Armijo and related line searches that perform the entire search in a single parallel execution step. This approach avoids sequential backtracking and common initialization heuristics ~\citep{vaswani2019painless,galli2023monotone}, and allows for use of a more effective selection criterion based on the step size that minimizes the objective the most. 
+%Crucially, such line searches can always backtrack from a large, constant step size efficiently across iterations. Building on this approach, we present novel step size selection criteria for Armijo and related line searches, selecting the step size that most minimizes the objective. 
+We prove that this approach converges linearly under an interpolating condition matching the rate of previous (stochastic) line-search methods \citep{vaswani2019painless,galli2023monotone}. 
+% We then analyze a novel approach for choosing step sizes according to the Armijo condition above (and related conditions). In contrast to typical backtracking, which selects the largest valid step size, we select the step size that minimizes the objective most. 
+We also contribute an extensive set of experiments comparing several line search methods in Atari 2600 and MuJoCo in both prediction and control. We find that searching over a larger range of step sizes may be vital for the effectiveness of line search methods with RL data, signaling a significant paradigm shift from supervised learning where a primary concern has been to start the search from smaller step sizes to minimize the number of backtracking steps \citep{vaswani2019painless,galli2023monotone}. Finally, we outline a specific failure case of line searches on Atari 2600, namely that they may exacerbate convergence to poor, sharp minima.
+ 
+\section{Problem Formulation and Background}
+
+We formalize the agent-environment interaction as a Markov Decision Process (MDP), defined by the tuple
+$(\stateSpace, \actionSpace, \rewardFunction, \dynamics, \startStateDistribution, \discount)$.
+Here, $\stateSpace$ and $\actionSpace$ denote the state and action spaces, respectively. The reward function
+$\rewardFunction: \stateSpace \times \actionSpace \times \stateSpace \to \mathbb{R}$ provides a (possibly stochastic)
+scalar signal following each transition. The dynamics function $\dynamics: \stateSpace \times \actionSpace \to \distributionOver{\stateSpace}$
+maps state-action pairs to distributions over subsequent states, where $\distributionOver{\mathscr{X}}$ denotes
+the set of distributions over $\mathscr{X}$. The initial state is sampled from the starting distribution
+$\startStateDistribution \in \distributionOver{\stateSpace}$, and $\discount \in [0, 1]$ is the discount factor, which
+can take on the value of $1$ only in finite-horizon settings.
+
+The agent-environment interaction proceeds in discrete time steps $t = 0, 1, \ldots$. The environment starts in a state
+$S_0 \sim \startStateDistribution$. At each step, the agent observes
+the current environment state $S_T$ and selects an action $A_T \sim \pi(\cdot \mid S_T)$ according to its policy $\pi:
+\stateSpace \to \distributionOver{\actionSpace}$. The environment transitions to a new state $S_{t + 1} \sim
+\dynamics(S_t, A_t)$ and provides the agent with a reward $R_{t+1} = \rewardFunction(S_t, A_t, S_{t + 1})$.
+The agent's objective is to maximize the expected return $G_t$, defined as the cumulative discounted future reward $G_t
+\doteq \sum_{k=0}^\infty \discount^k R_{t + k + 1}$. The task of finding a policy to maximize the expected return
+$\mathbb{E}_{\pi, \dynamics, \startStateDistribution} \left[ G_0 \right]$ is referred to as the \textit{control}
+problem.
+
+To learn a policy which maximizes return, algorithms often rely on value functions which quantify the utility of states or
+actions in terms of reward. The state-value function $\vfn: \stateSpace \to \Rn$ denotes the expected return when
+starting in some state and following policy $\pi$ thereafter, $ \vfn(s) = \mathbb{E}_\pi \left[ G_t \mid S_t = s \right] $.
+Similarly, the action-value function $\qfn: \stateSpace \times \actionSpace \to \Rn$ denotes the expected return when
+taking an action in a given state and following $\pi$ thereafter, $ \qfn(s, a) = \mathbb{E}_\pi \left[ G_t \mid S_t = s,
+A_t = a \right] $. In environments with high-dimensional or continuous state spaces, these functions are typically
+estimated using function approximation. In this case, we learn functions $\vparam$ and $\qparam$ such that $\vparam(s)
+\approx \vfn(s)$ and $\qparam(s, a) \approx \qfn(s, a)$, where $\vparams$ and $\qparams$ are learnable parameters. The
+task of accurately estimating these values for a fixed policy is known as the \textit{prediction} problem. Monte Carlo
+methods for prediction provide unbiased targets for learning these value functions using full trajectory rollouts, but
+can suffer from high variance in the targets. Temporal Difference (TD) methods can reduce variance by
+bootstrapping targets from existing value estimates, though they may introduce some bias.
+
+% Martha: shouldn't have one big preamble that is essentially a section, and the one subsection
+\paragraph{Armijo and Nonmonotone Line Searches.}
+Consider the stochastic minimization problem  $\xstar = \argmin_{x \in
+\mathbb{R}^n} f_k(x)$, where $f_k$ is an unbiased stochastic estimate of an objective function $f$. Iterative algorithms typically update the current estimate $\xAt{k}$ by choosing an
+update direction $\updateAt{k}$ and taking a step in this direction, setting $\xAt{k+1} = \xAt{k} + \stepSizeAt{k} \updateAt{k}$
+where $\stepSizeAt{k} > 0$ is a scalar step size. While $\stepSizeAt{k}$ is often fixed or
+linearly decayed, recent research has pivoted toward adaptive step-size selection to improve convergence and robustness as discussed above.
+
+A prominent class of adaptive methods is the line search \citep{nocedal2006numerical,armijo1966minimization,vaswani2019painless,vaswani2025armijo,galli2023monotone,fox2024nonmonotone,fox2024glocal}. These methods
+dynamically search for an optimal $\stepSizeAt{k}$ along the direction $\updateAt{k}$. In particular, the stochasitc Armijo line
+search selects an $\stepSizeAt{k}$ that satisfies the \textit{stochastic Armijo condition} \citep{vaswani2019painless}:
+%
+\begin{equation}
+        f_k(\xAt{k} + \stepSizeAt{k} \updateAt{k}) \le f_k(\xAt{k}) + c \stepSizeAt{k} \inner{\nabla f_k(\xAt{k})}{\updateAt{k}},
+    \label{eq:armijo_condition}
+\end{equation}
+%
+where $c \in (0, 1)$ is a hyperparameter and $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$. Line searches are flexible, and can easily be layered atop any optimizer that produces an update vector $\updateAt{k}$ that satisfies this property \citep{nocedal2006numerical,vaswani2025armijo,shea2024so}.
+
+Backtracking is
+typically used to recover $\stepSizeAt{k}$ by evaluating the sequence $\stepSizeAt{k}^{(i)} = \stepSizeInit \beta^i$ for $i = 0, \dots, B$ where $\stepSize_0 > 0$ is some initial step size. The algorithm sets $\stepSizeAt{k} = \stepSizeAt{k}^{(i)}$ using the smallest $i$ satisfying Equation~\ref{eq:armijo_condition}, typically falling back to $\stepSizeAt{k}^{(B)}$ if no candidate is found. Historically, the sequential cost of $B$ backtracking evaluations led to heuristics aimed at optimizing the initial guess $\stepSizeInit$. Notably, \cite{vaswani2019painless} propose to initialize each iteration $k$ of the line search from $\stepSizeAt{k} \delta^{n/b}$ for finite-sum supervised learning objectives with Armijo line searches, where $\delta > 1$, $n$ is the dataset size, and $b$ is the batch size. \cite{galli2023monotone} suggest using Polyak step sizes for initialization.
+
+
+Despite its theoretical guarantees, the Armijo condition's insistence on monotonic decrease can be restrictive, resulting in minuscule step sizes \citep{nocedal2006numerical}.
+% By imposing a strict decrease at each step, the line search may "undershoot" the edge of stability, leading to an iterativereduction in step sizes \tocite{}. This behaviour often forces the optimizer into increasingly sharp regions of the loss landscape, which can hinder generalization. 
+To mitigate this, non-monotone line searches relax the
+requirement of a strict decrease at every iteration and instead simply require that progress be made overall
+\citep{zhang2004nonmonotone,galli2023monotone,fox2024nonmonotone,grippo1986nonmonotone,dai2002nonmonotone,huynh1993nonmonotone,ernesto2000nonmonotone}. This is often accomplished by replacing the $f(\xAt{k})$ term in
+Equation~\ref{eq:armijo_condition}. Non-monotone line searches often choose larger step sizes than Armijo line searches, potentially finding flatter, more robust minima \citep{fox2024nonmonotone}.
+Many non-monotone conditions exist; we use one that requires progress over an exponential moving window of iterates \citep{zhang2004nonmonotone,galli2023monotone}:
+%
+\begin{equation}
+	\begin{split}
+		f(\xAt{k} + \stepSizeAt{k} \updateAt{k}) &\le C_k + c \stepSizeAt{k} \inner{\nabla f(\xAt{k})}{\updateAt{k}} 
+		\quad \text{where} \\
+			C_k = \max \left\{ \tilde C_k, f(x_k) \right\} \qquad
+			\tilde C_k &= \frac{\xi Q_k C_{k-1} + f(x_k)}{Q_{k+1}} \qquad 
+			Q_{k + 1} = \xi Q_k + 1
+	\end{split}
+	\label{eq:nonmonotone_condition}
+\end{equation}
+%
+where again $c \in (0, 1)$ and $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$. Here, $C_k$ is a bias-corrected exponential moving average of function values, except that
+%so long as $C_k = \tilde C_k$ for all $k$.
+when $f(\xAt{k}) > \tilde C_k$, the term $C_k = f(\xAt{k})$ subsumes the weight for the past function values $f(\xAt{k -
+1}), f(\xAt{k - 2}), \ldots, f(\xAt{0})$.
+
+
+\section{Parallel Line Searches}
+
+We propose a framework for integrating line search techniques into RL to adaptively determine step sizes for both value function approximation and policy optimization. Specifically, we investigate the application of Armijo \citep{armijo1966minimization} and non-monotone \citep{zhang2004nonmonotone} line searches within the stochastic constraints of RL environments.
+
+The sequential backtracking procedure is often the primary hurdle to adopting line searches in deep learning. Evaluating multiple candidate step sizes ($\stepSize$) typically requires repeated forward passes, which can impose a significant computational overhead. Recent work has introduced heuristics to mitigate this overhead by starting the line search at sufficiently small step sizes, reducing the number of backtracking steps \citep{vaswani2019painless,galli2023monotone}. 
+% Often, these methods are theoretically motivated for the overparameterized setting. In the RL setting, this is atypical. Consequently, standard heuristics used in supervised learning may not directly transfer to RL.
+
+We leverage the fact that the backtracking procedure is completely paralellizable.
+% a Single-Program Multiple-Data operation. 
+We can utilize modern hardware accelerators to evaluate the entire set of candidate step sizes in parallel within a single execution step. This fundamentally alters the design space: we  no longer must rely on conservative initializations or incremental heuristics for computational efficiency. Instead, we can recover a panoptic view of the local objective landscape. By restarting every iteration from a consistently large initial step size, $\stepSizeInit$, the algorithm can better capture the local geometry and can achieve greater progress when large steps are optimal. 
+% To distinguish from methods that choose the initial step size heuristically, we hereon refer to approaches which start from a fixed $\stepSizeInit$, simply as a \textit{backtracking} line searches.
+
+By parallelizing the evaluation of the objective function $f_k$ along the update direction $\updateAt{k}$ for each candidate step size in the backtracking procedure, we can better characterize the local geometry of the loss surface. Rather than accepting the first step size that satisfies the Armijo condition as is typical with sequential backtracking line searches, we propose a more aggressive selection strategy. We select the step size that most minimizes $f_k$ along $\updateAt{k}$ while still satisfying Equaton~\ref{eq:armijo_condition}:
+%
+\begin{equation}
+    \stepSizeAt{k} = \arg\min_{\stepSize \in \mathcal{H}_k} f_k(\xAt{k} + \eta \updateAt{k})
+\end{equation}
+%
+where $\mathcal{H}_k$ is the set of candidate step sizes that satisfy Equation~\ref{eq:armijo_cond} together with the smallest step size:
+%
+\begin{equation} 
+    \mathcal{H}_k = \left\{ \stepSizeAt{k}^{(i)} \mid i \in \{0, 1, \dots, B\}, \, f_k(\xAt{k} + \eta \updateAt{k}) \leq f_k(\xAt{k}) + c \stepSizeAt{k}^{(i)} \nabla \inner{f_k(\xAt{k}}{ \updateAt{k}} \right\} \cup \left\{ \stepSizeInit \beta^B \right\}
+    \label{eq:min_search}
+\end{equation}
+%
+Here, $f_k$ denotes the stochastic objective at iteration $k$, $B$ is the number of backtracking steps, and the union with $\{\stepSizeInit \beta^B\}$ provides a fallback step size in case all other step sizes fail to satisfy the Armijo condition. We call this the \textit{Argmin Armijo Line Search} and also consider non-monotone variants by defining $\mathcal{H}_k$ according to the condition in Equation~\ref{eq:nonmonotone_condition}. Pseudocode for the Argmin Armijo and Argmin Non-monotone line searches are shown in Algorithms~\ref{alg:argmin-armijo} and \ref{alg:argmin-nonmonotone} respectively in Supplementary Material~\ref{supp:algs}.
+
+\section{Theoretical Results for Argmin Armijo Line Search} \label{sec:theory}
+
+In this section, we theoretically analyze the Armijo line search algorithm presented in \eqref{eq:min_search}, in the supervised setting with the following finite sum objective  
+\begin{align*}
+    f(x) = \tfrac{1}{n} \sum_{i=1}^n f_i(x),
+\end{align*}
+where $n$ is the total number of data points and following the stochastic gradient update direction.
+% The algorithm we consider is stochastic gradient descent (SGD) with the step size determined by our parallel-Armijo search. 
+Specifically, an index $i_k$ is sampled uniformly at random in every iteration. The sampled function ($f_{i_k}$) together with its gradient are used in the Armijo condition in \eqref{eq:armijo_condition}. Before presenting the main results, we state the assumptions used in the analysis. The first assumption on the gradient-Lipschitzness is standard in the optimization literature \citep{bottou2018optimization,vaswani2019painless,loizou2021stochastic,galli2023monotone}.  
+\begin{assumption} \label{ass:smooth} Each function $f_i$ is $L$-smooth, i.e., $\norm{\nabla f_i(x) - \nabla f_i(y)} \leq L \norm{x - y}, \forall i \in [n]$. This implies that the overall function $f$ is $L$-smooth. 
+\end{assumption}
+Furthermore, we assume that the stochastic noise at the global optimum is bounded. This assumption has been used in various previous works to study the convergence of adaptive step sizes \citep{loizou2021stochastic,galli2023monotone,jiang2023adaptive}. The interpolation condition is when the noise $\sigma^2$ is equal to zero \citep{loizou2021stochastic}. This happens when the global optimum of the overall objective is also optimal for each individual function. It can be realized in   over-parameterized models (such as neural networks) where each data is fitted exactly \citep{vaswani2019painless,liu2018accelerating,bassily2018exponential}.
+\begin{assumption} \label{ass:noise} The noise at the optimum is finite, i.e., $\sigma^2 := \EE_{i}[f_i(x^*) - f_i^*] < \infty$, where $f_i^*$ is the optimal function value of each function $f_i$.    
+\end{assumption}
+
+We first show the returned step of the backtracking Armijo search is bounded below by a constant that depends on the smoothness parameter ($L$) and the number of parallel search-runs (B).  
+\begin{lemma} \label{lem:step_lower} Under Assumption \ref{ass:smooth}, the step size returned by \textit{Argmin Armijo Line Search} satisfies $\eta_k \in \left[ \min\{ \frac{2(1-c)}{L}, \eta_0 \beta^B\},  \eta_0 \right]$.  
+\end{lemma}
+
+Given Lemma \ref{lem:step_lower}, we obtain the following convergence rate when the function is strongly-convex. The proof details can be found in App. \ref{sec:converge}. 
+
+\begin{theorem} Suppose that Assumption \ref{ass:smooth} and \ref{ass:noise} hold. Further assume that the function $f$ is $\mu$-strongly convex and the functions $f_i$ are convex for all $i \in [n]$. Choose $c \geq \frac{1}{2}$ and $B \geq \frac{\log(2 \eta_0 L c)}{\log(1/\beta)}$. Then, it holds for \textit{Argmin Armijo Line Search}
+\begin{align*}
+    \EE[\norm{x_{k+1}- x^*}^2] 
+    &\leq (1 - \mu\alpha)^k \norm{x_{0}- x^*}^2 + 2 \eta_0 \sigma^2 \frac{1}{\mu \alpha}, 
+\end{align*}
+where $\alpha:=\min\{ \frac{2(1-c)}{L}, \eta_0 \beta^B\}$.     
+\end{theorem}
+
+\begin{remark}
+ Under interpolation (where $\sigma^2 = 0$),     with the choice of $c=\frac{1}{2}$ and $B = \frac{\log(\eta_0 L)}{\log(1/\beta)}$, we obtain the same linear convergence rate as the stochastic line search methods appeared in  \citet{vaswani2019painless}\footnote{\citet{vaswani2019painless} aadditionally assumes that at least one function $f_i$ is strongly convex. This assumption can be relaxed via the approach in \citet[Thm. 3.1]{loizou2021stochastic}. Here, we only assume the functions $f_i,\forall i\in[n]$ are convex as in \citet{loizou2021stochastic}} and  \citet{galli2023monotone}. However, these previous analyses do not fully take their resetting schemes into considerations. Concretely, the search initialization  in \citet{vaswani2019painless} is treated as a constant whereas it depends on the previous (found) step size in the actual implementation. \citet{galli2023monotone} uses the Stochastic Polyak Step-size \citep{loizou2021stochastic} to reset the step size whereas the theory assumes that the search initialization is always in an arbitrary interval. On the contrary, our theory accounts for the resetting scheme in the implementation thanks to the simplicity of our algorithm (i.e., resetting the step size to $\eta^{(0)}$ at every iteration).      
+ % The interpolation conditions means that the stochastic noise at the global optimum vanishes, i.e., the 
+\end{remark}
+
+\section{Empirical Study}
+
+In this section, we empirically characterize the performance and stability of line search methods in RL across three regimes: (1) state-value prediction on MuJoCo (30 seeds), (2) PPO control on Brax (20 seeds), and (3) state-value prediction on Atari (20 seeds). This progression evaluates line searches first on fixed-target supervised objectives with RL data before transitioning to the non-stationary, bootstrapping dynamics inherent in reinforcement learning control. All results are reported with 95\% percentile bootstrap confidence intervals (1,000 resamples) and $\gamma = 0.99$ throughout. All line plots are smoothed for readability.
+
+\begin{figure}
+     \centering
+     \includegraphics[width=\textwidth]{figure/prediction/lc_mujoco_mc_rmsp_raw.pdf}
+     \caption{Prediction with RMSprop on Mujoco with Monte Carlo targets over 30 seeds.}
+      \label{fig:mujoco_mc_rmsp}
+\end{figure}
+
+\begin{figure}
+     \centering
+     \includegraphics[width=\textwidth]{figure/prediction/lc_mujoco_mc_sgd_raw.pdf}
+     \caption{Prediction with SGD on Mujoco with Monte Carlo targets over 30 seeds.}
+      \label{fig:mujoco_mc_sgd}
+\end{figure}
+
+\textbf{Experiment Setup and Data}\ \ \ \
+For MuJoCo and Atari, we treat value estimation as a regression task. Given a dataset $\mathcal{D} = \{s_i, y_i\}$, we minimize the Mean Squared Error: $L(\vparams) = \mathbb{E}_{\mathcal{D}} [ \| \vparam(s) - y \|^2 ]$ where $\vparam$ is a learned state-value function with parameters $\vparams$. Prediction targets $y_i$ consisted of either Monte Carlo return or $\lambda$-return ($\lambda=0.95$) estimates. We employ an 80/20 train/test split.
+
+MuJoCo experiments utilized the expert-policy Minari datasets \citep{minari}. For Atari, we generated datasets\footnote{Datasets and code will be released upon acceptance.} by training a DQN agent (following the experimental setup of \cite{castro18dopamine}) for 200M frames across seven games with sticky actions ($p=0.25$, learning curves in Figure~\ref{fig:atari_policies}). The datasets comprise 1M transitions from the final greedy policy. These games were specifically chosen to cover a range of scenarios: Pong (sparse delayed rewards), Breakout! (smooth score changes), Seaquest (cyclic dynamics), Centipede (constantly changing input distributions), Ms. Pac-Man (variance induced by ghost movements), Beam Rider (somewhat drastic sector changes), and Space Invaders (irreversible state changes and large sparse rewards).  
+For the control regime, we evaluated the line searches with PPO \citep{schulman2017proximal} across 5 envrionments from the Brax suite. \citep{brax2021github}. We tested both backtracking and Argmin strategies for Armijo and Nonmonotone line searches (hereon, we may drop the \textit{backtracking} prefix for brevity), each used to select step sizes atop SGD or RMSprop.\footnote{In this paper, we did not investigate combining Adam \citep{kingma2015adam} with line search. Adam's updates are not guaranteed to satisfy the assumptions required for Equations~\ref{eq:armijo_condition} or \ref{eq:nonmonotone_condition}. The inclusion of momentum significantly complicates things and although prior work in the supervised setting investigated some mitigations~\citep{kenneweg2024improving,shea2024so,fan2023msl}, more work needs to be done to understand combining Adam with line search.}  We compared to fixed step size baselines, as well as the initialization heuristic from \cite{vaswani2019painless}, which we refer to as \textit{Heuristic Armijo}.
+
+%In this paper, we did not investigate combining Adam \citep{kingma2015adam} with line search. Adam's updates are not guaranteed to satisfy the assumptions required for Equations~\ref{eq:armijo_condition} or \ref{eq:nonmonotone_condition}. The inclusion of momentum significantly complicates things and although prior work in the supervised setting investigated some mitigations~\citep{kenneweg2024improving,shea2024so,fan2023msl}, understanding line search with RMSProp was already a significant undertaking, and we leave extensions to Adam for future work.
+
+\textbf{Hyperparameters}\ \ \ \
+To ensure consistency, we maintained identical hyperparameters across all experiments unless otherwise noted. MuJoCo and Brax experiments utilized the standard PPO MLP: two hidden layers of 64 units with tanh activations \cite{shengyi2022the37implementation}. Atari experiments used the Nature DQN convolutional architecture \citep{mnih2015human}. We used a minibatch size of 1024. Fixed step-size baselines for SGD and RMSprop were tuned via grid search over $\eta \in \{10^{-5}, \dots, 10^{-1}, 0.5\}$. Following \cite{neumann2023greedy}, we selected the $\eta$ that maximized aggregate performance across all seeds and environments after normalizing training loss (rescaling 5th and 95th percentiles to 0 and 1 respectively). 
+% Optimal values were $\eta = 10^{-2}$ for SGD and $10^{-3}$ for RMSprop. 
+Line searches always started from $\stepSizeInit = 1$ (for Heuristic Armijo, this is only for the first update) and performed $B=30$ backtracking steps with $\beta=0.7$. We set $c=0.1$ for Armijo variants \citep{vaswani2019painless} and $c=0.5$ for Non-monotone variants \citep{galli2023monotone}. All other hyperparameters for Heuristic Armijo used the defaults \citep{vaswani2019painless}.
+
+\begin{figure}[h]
+     \centering
+     \includegraphics[width=\textwidth]{figure/prediction/lc_mujoco_lambda_rmsp_raw.pdf}
+     \caption{Prediction with RMSprop on Mujoco with $\lambda$-return targets over 20 seeds}
+     \label{fig:mujoco_lambda_rmsp}
+\end{figure}
+
+
+\subsection{Line Searches Choose Effective Step Sizes on High-Dimensional Continuous State and Action Problems}   
+
+In this section, we empirically investigate using line search methods for step size selection in the MuJoCo and Brax environment suites. We first start with state-value prediction using Monte Carlo and $\lambda$-return targets before analyzing line search methods in PPO control.
+
+\textbf{Prediction with Monte Carlo Targets}\ \ \ \
+Figures~\ref{fig:mujoco_mc_rmsp} and \ref{fig:mujoco_mc_sgd} show the test loss and step sizes for state-value learning using Monte Carlo targets with RMSprop and SGD respectively. For both SGD and RMSprop, we found that the Armijo line search variants often performed similarly to the fixed step size baseline, but without any manual tuning. In fact, we see that the line searches often reflected the relative ordering of the tuned, fixed step size baselines, selecting smaller step sizes for RMSprop than for SGD in each environment. In other cases, such as Non-monotone on Walker2D and Swimmer with SGD, the line searches selected larger step sizes than the fixed baseline and made more progress in reducing test loss.
+On the other hand, the Heuristic Armijo baseline consistently underperformed relative to the other line searches, underscoring the importance of considering larger step sizes in the line search for this setting. To save space, the results with SGD in the following experiments can be found in the Supplement. 
+
+
+\textbf{Prediction with $\lambda$-return Targets}\ \ \ \
+Figure~\ref{fig:mujoco_lambda_rmsp} and Supplementary Figure~\ref{fig:mujoco_lambda_sgd} show the test loss and step sizes for state-value estimation using $\lambda$-returns 
+% computed with Generalized Advantage Estimation 
+on the MuJoCo suite for RMSprop and SGD respectively. The results here align with our earlier observations regarding Monte Carlo targets, with one notable exception: the Heuristic Armijo method suffers from catastrophic failures on Ant and Swimmer. These failures further underscore the utility of considering the full set of candidate step sizes in line searches for RL. 
+% In line search methods perform better with larger batch size in this setting. This suggests a lower variance estimate of the objective 
+% , as the Heuristic Armijo fails to adequately probe the objective landscape, leading to the selection of poor step sizes. 
+%
+
+
+
+\begin{figure}[t]
+     \centering
+     \includegraphics[width=\textwidth]{figure/control/ppo_learning_curves_rmsprop.png}
+     \caption{PPO control with RMSprop in MuJoCo.}
+     \label{fig:ppo_learning_curves_rmsp}
+\end{figure}
+
+\textbf{PPO Control in Brax MuJoCo}\ \ \ \
+We now examine the performance of line search methods in control with PPO, which uses $\lambda$-returns to estimate a state-value function critic.
+% , providing a natural extension of our results in the prediction setting. 
+We use line search for both the parameterized policy and state-value network. As in the prediction setting, we examine the behavior of both the backtracking and Argmin variants of the Armijo and Non-monotone line searches with RMSProp and SGD. We omit Heuristic Armijo as the dataset size $n$ is not well-defined in the online setting. We measure the performance of all methods over 3 million steps on 5 environments from the Brax MuJoCo suite \citep{brax2021github} with 30 random seeds.
+% and do not use parallel environments. 
+For fixed step-sizes we examine both the default PPO batch size of 64 \citep{shengyi2022the37implementation} and batch size 1024, tuning fixed step sizes over each separately (denoted tuned-64 and tuned-1024).
+% All line search hyperparameters also remain unchanged from the prediction experiments. 
+% To tune the fixed step-size, we compute the min-max normalized mean return in each environment and then average the normalized values across all environments. Examined step sizes and their performance are reported in \todo{table}. 
+% We repeat this process to determine the optimal fixed step-size for both batch sizes 64 and 1024 (denoted tuned-64 and tuned-1024) with RMSProp and SGD. For each optimizer, the best examined step-sizes are consistent across both batch sizes: $3^{-2}$ for SGD and $3^{-4}$ for RMSprop. 
+All other hyperparameter and network architecture settings are set according to \cite{shengyi2022the37implementation}.
+
+Figure~\ref{fig:ppo_learning_curves_rmsp} and Supplementary Figure \ref{fig:ppo_learning_curves_sgd} show the return for all methods and the selected step sizes for the line search algorithms over 3 million environment interactions.
+% , which is equivalent approximately 30 thousand network updates. 
+The Argmin line searches typically performed at least as well as their standard backtracking counterparts.
+% Armijo with both RMSP and SGD. Similarly, Argmin non-monotone generally performed as well or better than non-monotone in all environments except Walker2d, where it did worse.
+Both Argmin line searches performed similarly across all settings, suggesting that the Argmin approach reduces the effect of relaxing the Armijo condition. Both Argmin variants generally selected similar step sizes, which were smaller than those of their counterparts. This suggests that within the satisfying set for the Armijo condition, the step size with the maximum decrease may often be strictly smaller than the upper bound of the satisfying interval.
+
+
+With both RMSProp and SGD, the greedy line search methods performed as well or better than tuned-1024 in all environments, while regular Armijo often did worse. The strong performance of the Armijo line searches relative to tuned-1024 suggests the benefits of these methods are not simply due to larger batch size. However, the performance of tuned-64 was generally much better than tuned-1024, matching or narrowly outperforming all line search methods across all settings except Humanoid with RMSProp, where it performed poorly. The Armijo line search methods still performed as well as tuned-64 in Swimmer and Ant, and performed much better in humanoid.% which notably is unique from the other environments due to its observation size, demonstrating that line search methods can also perform as well as a tuned step size with
+
+
+\begin{wrapfigure}[21]{R}{0.5\textwidth}
+    %\vspace{-0.25cm}
+     \includegraphics[width=0.5\textwidth]{figure/control/ppo_mean_return_bars_rmsp.png}
+     \caption{PPO with RMSProp in Ant using batch size 1028 \& 64.}
+     \label{fig:ppo_batch_size}
+\end{wrapfigure}
+In the full-batch, non-convex, supervised setting, line search algorithms with similarly greedy heuristics to Argmin have been shown to select highly conservative step sizes and fail to reach the edge of stability (EOS) \citep{roulet2024stepping}, resulting in slow convergence to sharp, poor-performing local minima. However, we do not observe this behavior with the Armijo line search in the online control setting. It is possible the implicit regularization that arises from stochasticity in the batch setting may alleviate EOS undershooting in our MuJoCo experiments \citep{roulet2024stepping}. In fact, the strong performance of the Argmin methods could actually be attributed to selecting more conservative step sizes in the online batch setting, where objective estimates can be high-variance. However, the competitive performance of the non-monotone line search suggests the benefits of Argmin may be due more to improved progress-per-update rather than smaller chosen step sizes. 
+
+% For all line search methods, the chosen step sizes for the actor exponentially decay throughout learning while the critic step size holds more constant. Consistent with both the Monte-Carlo and $\lambda$ return prediction settings, the tuned fixed step size was larger for SGD and smaller for RMSProp. Once again, the line search methods selected larger step sizes for SGD and smaller step-sizes for RMSProp. For both optimizers, the chosen step sizes by the line search methods tend to be larger than defaults, suggesting...
+
+% \todo{Plot with loss landscape at one update showing the ss that would be accepted for each method, maybe can see if there are logged updates where it demonstrates the hypothesized utility of the min loss method above but will have to see what we find, can show multiple updates or just 1. This plot could also be done in an earlier section instead, just here, or both. I think it would be cool and help demonstrate both the difference between the methods and potentially how it clearly impacts their performance in this setting.}
+
+
+\begin{wrapfigure}[18]{r}{0.5\textwidth} 
+     \vspace{-.25cm}
+     \centering
+     \includegraphics[width=0.5\textwidth]{figure/control/ppo_step_size_grid.png}
+     \caption{Step sizes for PPO with RMSProp in Ant, batch size 1028 \& 64 over 20 seeds.}
+     \label{fig:ppo_step_size_vs_batch_size}
+\end{wrapfigure}
+To examine the effect of batch size on the performance of the line search methods in the control setting, Figure \ref{fig:ppo_batch_size} compares the mean return in Ant with batch size 1024 and 64. Large batch size greatly improves the performance of all line search methods. In fact, the Armijo, greedy Armijo and non-monotone methods completely fail to learn in this environment with small batch size. Examining Figure \ref{fig:ppo_step_size_vs_batch_size}, we observe that with small batch size the accepted step sizes generally exhibit much higher variance and appear less stable, particularly for the actor. For the Armijo line search, the network weights diverge early in learning. These results suggest the reduced variance afforded by larger batch size may prevent the line search from overfitting to stochastic inaccuracies in the objective estimate. Such inaccuracies may be particularly prevalent in the online setting, where objective estimates often suffer from high variance due to stochastic, temporally correlated environment transitions. 
+
+
+
+\subsection{Line Searches Can Enter Sharp Regions of Parameter Space}  
+
+
+\begin{figure}[htbp]
+     \centering
+     \includegraphics[width=\textwidth]{figure/prediction/lc_atari_mc_rmsp_raw.pdf}
+     \caption{State-value prediction with RMSprop on Atari with Monte Carlo targets over 20 seeds.}
+     \label{fig:atari_mc_rmsp}
+\end{figure}
+
+We now move to pixel-based, discrete-action prediction tasks in Atari 2600. Until now the results have largely been as expected, however, both the inputs and actions taken by the policy in Atari can exhibit fairly drastic changes in contrast to the relative smoothness of Mujoco. In fact, we find the loss surfaces in Atari have sharp local minima that are particularly problematic for line search methods.
+
+
+Figure~\ref{fig:atari_mc_rmsp} show the test loss and step sizes for state-value prediction (supervised) across the Atari environments for RMSprop (see Figure~\ref{fig:atari_mc_sgd} in Supplementary Material~\ref{supp:exp} for SGD). While we found the line search methods to generally improve SGD performance compared to the fixed baseline, the results for RMSprop are more nuanced. Here, the line searches frequently performed worse than the fixed step size baseline, and often chose step sizes at their lower range.
+% This reveals a specific pathological interaction between line searches and these kinds of RL datasets. 
+Because line searches can systematically undershoot the edge of stability \citep{cohen2021gradient,cohen2024adaptive}, spiraling into a cycle of selecting increasingly smaller step sizes \citep{roulet2024stepping},
+we hypothesized that the line searches were entering sharp regions of the objective.
+
+
+
+To evaluate this hypothesis we plot the maximum absolute Hessian eigenvalues for the training loss on the Atari domains with RMSprop in Figure~\ref{fig:atari_sharp_rmsp} (see Figure~\ref{fig:atari_sharp_sgd} in Supplementary Material~\ref{supp:exp} for SGD). 
+We see a clear correlation between sharpness and high test loss. Notably, the FB Non-monotone line search exhibited slight robustness to these sharpness issues, likely because it naturally chooses larger step sizes. In contrast, the Heuristic Armijo method frequently entered high curvature regions. We found the opposite conclusion with the MuJoCo dataset (Figures~\ref{fig:mujoco_sharp_rmsp} and \ref{fig:mujoco_sharp_sgd} in Supplement~\ref{supp:exp}): performance was typically better for the adaptive step size methods and sharpness lower, contrary to previous findings in supervised learning \citep{roulet2024stepping}.
+% Developing strategies robust to this phenomenon remains a promising direction for future research.
+
+%\begin{wrapfigure}[7]{r}{0.6\textwidth} 
+\begin{figure}[htb]
+    \centering
+    \includegraphics[width=\linewidth]{figure/prediction/sharp_atari_mc_rmsp_raw.pdf}
+    \caption{Max Hessian eigenvalues on Atari with RMSprop}
+    \label{fig:atari_sharp_rmsp}
+\end{figure}
+
+\section{Discussion and Conclusion}
+In this work, we introduced a simple parallelization approach for line search methods in deep reinforcement learning (RL). By leveraging the concurrency of modern accelerator hardware, we can evaluate a comprehensive set of candidate step sizes in a single operation, allowing for a more granular characterization of the objective function than traditional sequential backtracking. Specifically, we proposed a strategy that selects the step size that minimizes the loss function while strictly adhering to sufficient decrease conditions, such as those defined in Equations~\ref{eq:armijo_condition} or \ref{eq:nonmonotone_condition}. While the parallel implementation is not a technical contribution in and of itself, it allowed us to demonstrate the effectiveness of full line searches---always starting backtracking from a large step size---as well as new methods for choosing step sizes that satisfy line search condition while incorporating more information about the objective function. 
+
+Our results highlight a departure from supervised learning conventions, where a primary concern has often been to minimize the number of backtracking steps to reduce overhead \citep{vaswani2019painless, galli2023monotone}. In contrast, we demonstrated that in RL settings, evaluating the full range of candidate step sizes is not only computationally feasible but also often essential. Indeed, we show that heuristics common in supervised learning can sometimes lead to failures on of RL data.
+
+Nevertheless, our empirical analysis suggests that line searches are not a universal remedy for step-size selection. While backtracking and Argmin line searches were effective for state-value prediction and control in MuJoCo and Brax using PPO, we encountered significant performance degradation in Atari environments. We provided evidence suggesting that these failure cases are linked to the optimization process entering sharp regions of the objective surface. 
+
+We propose two avenues for future work. First, we observed a clear correlation between state-value estimation failures in Atari and learning parameters in sharp regions in the objective function. Future research should investigate the underlying causes of this phenomenon and explore remedies, such as data augmentation or other regularization techniques, to improve robustness. Second, our analysis focused on Monte Carlo targets and $\lambda$-returns for state-value prediction, and on-policy PPO for control. A natural extension would be to adapt line search methods for Temporal Difference (TD) learning and off-policy actor-critic methods. These settings introduce unique complexities, as bootstrapping makes targets non-stationary, fundamentally changing the nature of the optimization problem. %Finally, modern hardware can extract valuable statistics about the objective function with little impact on runtime. We conjecture that better optimization algorithms can be developed by utilizing this virtually free information to make more informed decisions about parameter updates.
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Appendices
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+
+
+
+% \noindent \textbf{Note:} Appendices appear before the references and are viewed as part of the ``main text'' and are subject to the 8--12 page limit, are peer reviewed, and can contain content central to the claims of the paper. 
+
+% \section{The second appendix}
+% \label{sec:appendix2}
+% Learning curves for policies used in Atari dataset collection. 
+
+% \subsubsection*{Acknowledgments}
+% \label{sec:ack}
+% Use unnumbered third level headings for the acknowledgments. All acknowledgments, including those to funding agencies, go at the end of the paper. Only add this information once your submission is accepted and deanonymized. The acknowledgments do not count towards the 8--12 page limit.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% NOTE: THIS MARKS THE END OF THE "MAIN TEXT"
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% Bibliography
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\bibliography{main}
+\bibliographystyle{rlj}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% AUTHOR: If your paper has no supplementary materials, you may 
+%         comment out the line below, which creates the title for
+%         the supplementary materials.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\beginSupplementaryMaterials
+
+\section{Convergence Results} \label{sec:converge}
+
+% \begin{lemma} \label{lem:step_lower} Under Assumption \ref{ass:smooth}, The returned step size of parallel-Armijo search satisfies $\eta_k \in \left[ \min\{ \frac{2(1-c)}{L}, \eta^0 \beta^B\},  \eta^0 \right]$.  
+% \end{lemma}
+\begin{lemma} \label{lem:step_lower} Under Assumption \ref{ass:smooth}, The step size returned by \textit{Argmin Armijo Line Search} satisfies $\eta_k \in \left[ \min\{ \frac{2(1-c)}{L}, \eta_0 \beta^B\},  \eta_0 \right]$.  
+\end{lemma}
+
+\begin{proof}
+    We consider two cases: (1) $\eta_k = \eta^{0} \beta^B$; (2) $\eta_k = \argmin_{\eta \in \mathcal{H}_k} f_{i_k}(x_k - \eta \nabla f_{i_k}(x_k))$. For the first case, there is no backtracking involved. By  smoothness, we know all step sizes $\eta_k$ with $\eta_k \leq \frac{2(1-c)}{L}$ satisfy the Armijo condition as
+    \begin{align*}
+        f_{i_k}(x_{k+1}) &\leq f_{i_k}(x_k) + (\frac{L}{2} \eta_k^2 - \eta_k) \norm{\nabla f_{i_k}(w)}^2 \\ 
+        &\leq f_{i_k}(x_k) - c \eta_k \norm{\nabla f_{i_k}(w)}^2,
+    \end{align*}
+    where the last inequality is by $\eta_k \leq \frac{2(1-c)}{L}$. Hence, for case (1), it necessarily holds that $\eta^0 \beta^B > \frac{2(1-c)}{L}$. Otherwise, it contradicts to the set $\mathcal{H}_k$ being empty. We conclude that the step size in case (1) satisfies $\frac{2(1-c)}{L} \leq \eta_k \leq \eta^0 \beta^B$. For case (2) (i.e., the set $\mathcal{H}_k$ is non-empty), we have the trivial relationship that $\eta^0\beta^B \leq \eta_k \leq \eta^0$. Putting things together, we obtain
+    \begin{align*}
+        \eta_k \in \left[ \min\left\{ \frac{2(1-c)}{L}, \eta^0 \beta^B\right\}, \max\left\{\eta^0 \beta^B, \eta^0 \right\}\right] = \left[ \min\left\{ \frac{2(1-c)}{L}, \eta^0 \beta^B\right\},  \eta^0 \right]. 
+    \end{align*}
+    In the case of the non-monotone search, step sizes satisfying $\eta_k \leq \frac{2(1-c)}{L}$ also satisfy the non-monotone search condition as $f_{i_k}(w_k) \leq C_k = \max \{ \tilde{C}_k, f_{i_k}(w_k)\}$ implying that $f_{i_k}(x_k) - c \eta_k \norm{\nabla f_{i_k}(w)}^2 \leq C_k - c \eta_k \norm{\nabla f_{i_k}(w)}^2$. Hence, the same upper and lower bounds apply in this case as well. The proof for the Preconditioned Argmin Armijo Line Search is similar. 
+\end{proof}
+
+% \begin{theorem} Suppose that Assumption \ref{ass:smooth} and \ref{ass:noise} hold. Further assume that the function $f$ is $\mu$-strongly convex and the functions $f_i$ are convex for all $i \in [n]$. Choose $c \geq \frac{1}{2}$ and $B \geq \frac{\log(2 \eta^0 L c)}{\log(1/\beta)}$. Then, it holds
+% \begin{align*}
+%     \EE[\norm{x_{k+1}- x^*}^2] 
+%     &\leq (1 - \mu\alpha)^k \norm{x_{0}- x^*}^2 + 2 \eta^0 \sigma^2 \frac{1}{\mu \alpha}, 
+% \end{align*}
+% where $\alpha:=\min\{ \frac{2(1-c)}{L}, \eta^0 \beta^B\}$.     
+% \end{theorem}
+
+\begin{theorem} Suppose that Assumption \ref{ass:smooth} and \ref{ass:noise} hold. Further assume that the function $f$ is $\mu$-strongly convex and the functions $f_i$ are convex for all $i \in [n]$. Choose $c \geq \frac{1}{2}$ and $B \geq \frac{\log(2 \eta_0 L c)}{\log(1/\beta)}$. Then, it holds for \textit{Argmin Armijo Line Search}
+\begin{align*}
+    \EE[\norm{x_{k+1}- x^*}^2] 
+    &\leq (1 - \mu\alpha)^k \norm{x_{0}- x^*}^2 + 2 \eta_0 \sigma^2 \frac{1}{\mu \alpha}, 
+\end{align*}
+where $\alpha:=\min\{ \frac{2(1-c)}{L}, \eta_0 \beta^B\}$.     
+\end{theorem}
+
+\begin{proof}
+    Our proof is adapted from \citet{loizou2021stochastic}. We again consider two cases: (1) $\eta_k = \eta^{0} \beta^B$; (2) $\eta_k = \argmin_{\eta \in \mathcal{H}_k} f_{i_k}(x_k - \eta \nabla f_{i_k}(x_k))$. We start with the following
+    \begin{align*}
+        \norm{x_{k+1} - x^*}^2 = \norm{x_k - x ^*}^2 - 2 \eta_k \langle \nabla {f_{i_k}} (x_k), x_k - x^* \rangle + \eta_k^2 \norm{\nabla f_{i_k} (x_k)}^2.
+    \end{align*}
+    For case (2), the step size satisfies the Armijo condition and we have
+    \begin{align*}
+        f_{i_k} (x_{k+1}) = f_{i_k} (x_k - \eta_k \nabla f_{i_k}(x_k)) \leq  f_{i_k} (x_k) - c \eta_k \norm{\nabla f_{i_k} (x_k)}^2,
+    \end{align*}
+    which implies that
+    \begin{align*}
+        \eta_k \norm{\nabla f_{i_k}(x_k)}^2 \leq \frac{f_{i_k} (x_k) - f_{i_k} (x_{k+1})}{c} \leq \frac{f_{i_k} (x_k) -f^*_{i_k}}{c}. 
+    \end{align*}
+    For case (1), we have 
+    \begin{align*}
+        \eta_k \norm{\nabla f_{i_k}(x_k)}^2 = \eta^0 \beta^B \norm{\nabla f_{i_k}(x_k)}^2 \leq 2 \eta^0 \beta^B L (f_{i_k} (x_k) -f^*_{i_k}) \leq \frac{f_{i_k} (x_k) -f^*_{i_k}}{c},
+    \end{align*}
+    where the last inequality is by $B \geq \frac{\log(2 \eta^0 L c)}{\log(1/\beta)}$. Hence, for both choices, it holds that
+    \begin{align*}
+        \norm{x_{k+1} - x^*}^2 &\leq  \norm{x_k - x ^*}^2 - 2 \eta_k \langle \nabla {f_{i_k}} (x_k), x_k - x^* \rangle + \frac{\eta_k}{c} (f_{i_k} (x_k) -f^*_{i_k}) \\
+        &\leq \norm{x_k - x ^*}^2 - 2 \eta_k \langle \nabla {f_{i_k}} (x_k), x_k - x^* \rangle + 2 \eta_k (f_{i_k} (x_k) -f^*_{i_k})\\
+        &= \norm{x_k - x ^*}^2 - 2 \eta_k \langle \nabla {f_{i_k}} (x_k), x_k - x^* \rangle + 2 \eta_k (f_{i_k} (x_k) -f_{i_k}(x^*)) + 2 \eta_k (f_{i_k}(x^*) -f^*_{i_k}) \\
+        &= \norm{x_k - x ^*}^2  + 2 \eta_k [\underbrace{-\langle \nabla {f_{i_k}} (x_k), x_k - x^* \rangle + f_{i_k} (x_k) -f_{i_k}(x^*)}_{\leq 0}] + 2 \eta_k (\underbrace{f_{i_k}(x^*) -f^*_{i_k}}_{\geq 0}) \\ 
+        &\leq \norm{x_k - x ^*}^2 + 2 \alpha  [-\langle \nabla {f_{i_k}} (x_k), x_k - x^* \rangle + f_{i_k} (x_k) -f_{i_k}(x^*)] + 2 \eta^0 (f_{i_k}(x^*) -f^*_{i_k}),
+    \end{align*}
+    where  we denote $\alpha:=\min\{ \frac{2(1-c)}{L}, \eta^0 \beta^B\}$. Next, we take expectation w.r.t. $i_k$ conditioned on $x_k$ to obtain 
+    \begin{align*}
+        \EE_{i_k}[\norm{x_{k+1}- x^*}^2|x_k] &\leq \norm{x_k - x ^*}^2 + 2 \alpha  [-\langle \nabla {f} (x_k), x_k - x^* \rangle + f (x_k) -f(x^*)] + 2 \eta^0 \EE_{i_k}[f_{i_k}(x^*) -f^*_{i_k}]\\
+        &\leq \norm{x_k - x ^*}^2 + 2 \alpha (-\frac{\mu}{2}\norm{x_k - x^*}^2) + 2 \eta^0 \sigma^2\\
+        &= (1- \mu \alpha) \norm{x_k - x^*}^2 + 2 \eta^0 \sigma^2.
+    \end{align*}
+    Taking total expectation, it holds
+    \begin{align*}
+        \EE[\norm{x_{k+1}- x^*}^2] \leq (1-\mu \alpha) \EE[\norm{x_{k+1}- x^*}^2] + 2\eta \sigma^2.
+    \end{align*}
+    Recursively applying the above relation, we arrive at 
+    \begin{align*}
+        \EE[\norm{x_{k+1}- x^*}^2] &\leq (1-
+        \mu \alpha)^k \norm{x_{0}- x^*}^2 + 2 \eta^0 \sigma^2 \sum_{i=0}^{k-1} (1-\mu \alpha)^k\\ 
+        &\leq (1 - \mu \alpha)^k \norm{x_{0}- x^*}^2 + 2 \eta^0 \sigma^2 \frac{1}{\mu \alpha}. 
+    \end{align*}
+    With the choice of $B \geq \frac{\log(2 \eta^0 L c)}{\log(1/\beta)}$, the relationship needs to hold $\alpha=\min\{ \frac{2(1-c)}{L}, \eta^0 \beta^B\} \leq \eta^0 \beta^B \leq \frac{1}{2cL}$. To avoid contradictions, we require $ \frac{2(1-c)}{L} \leq \frac{1}{2cL}$. This is equivalent to $(2c-1)^2 \geq 0$, which holds for all $c \in (0,1)$. Finally, we can choose $B \leq \frac{\log(\frac{L \eta^0}{2(1-c)})}{\log(1/\beta)}$ such that $\alpha = \min\{ \frac{2(1-c)}{L}, \eta^0 \beta^B\} = \frac{2(1-c)}{L}$.     
+\end{proof}
+
+\section{Data Collection}
+\label{supp:hypers}
+Figure~\ref{fig:atari_policies} shows learning curves for the policies used to collect the Atari datasets. Each policy was trained for 50 million steps (200 million frames of experience) and then frozen before interacting with the environment for an additional 1 million frames to collect the dataset.
+
+\begin{figure}[H]
+     \centering
+     \includegraphics[width=\textwidth]{figure/prediction/atari_policies.png}
+     \caption{Learning curves for policies used to collect Atari datasets}
+     \label{fig:atari_policies}
+\end{figure}
+
+\section{Additional Experimental Results}
+\label{supp:exp}
+
+\subsection{Results for SGD in Three Settings}
+Performance of all methods with SGD in prediction with Monte Carlo, prediction with $\lambda$ returns and control with PPO. The relative performance of methods is generally aligned with results for RMSProp in each setting.
+\begin{figure}[H]
+     \centering
+     \includegraphics[width=0.95\textwidth]{figure/prediction/lc_atari_mc_sgd_raw.pdf}
+     \caption{State-value prediction with SGD on Atari with Monte Carlo targets over 20 seeds.}
+     \label{fig:atari_mc_sgd}
+\end{figure}
+
+\begin{figure}[H]
+     \centering
+     \includegraphics[width=\textwidth]{figure/prediction/lc_mujoco_lambda_sgd_raw.pdf}
+     \caption{Prediction with SGD on Mujoco with $\lambda$-return targets over 20 seeds}
+     \label{fig:mujoco_lambda_sgd}
+\end{figure}
+
+\begin{figure}[H]
+     \centering
+     \includegraphics[width=\textwidth]{figure/control/ppo_learning_curves_sgd.png}
+     \caption{PPO control with SGD in MuJoCo.}
+     \label{fig:ppo_learning_curves_sgd}
+\end{figure}
+\clearpage % Forces the second figure onto a new page
+
+\subsection{Loss Landscape Sharpness in Monte Carlo Prediction}
+Curves of the maximum hessian eigenvalues during learning in the Monte Carlo prediction setting with the Atari and Mujoco datasets. In Atari, line search methods converge to regions of parameters space with high curvature, with the exception of the Non-monotone line search in Beam Rider. In MuJoCo, line search methods converge to regions with low curvature relative to fixed-step size baseline. 
+\begin{figure}[H]%{r}{0.65\textwidth}
+    \centering
+    \includegraphics[width=0.95\linewidth]{figure/prediction/sharp_atari_mc_sgd_raw.pdf}
+    \caption{Maximum Hessian eigenvalues on Atari using SGD}
+    \label{fig:atari_sharp_sgd}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{figure/prediction/sharp_mujoco_mc_rmsp_raw.pdf}
+    \caption{Maximum Hessian eigenvalues on MuJoCo using RMSProp}
+    \label{fig:mujoco_sharp_rmsp}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\linewidth]{figure/prediction/sharp_mujoco_mc_sgd_raw.pdf}
+    \caption{Maximum Hessian eigenvalues on MuJoCo using SGD}
+    \label{fig:mujoco_sharp_sgd}
+\end{figure}
+
+\section{Line Search Algorithms}
+\label{supp:algs}
+
+In this section, we show the complete Armijo line search algorithms used in this work. Algorithm~\ref{alg:argmin-nonmonotone} shows the Argmin Non-monotone line search. Algorithm~\ref{alg:argmin-armijo} shows the Argmin Armijo line search.
+
+
+\begin{algorithm}[tb]
+	\caption{Argmin Armijo Line Search}
+    \label{alg:argmin-armijo}
+	\begin{algorithmic}[1]
+		\REQUIRE {(Possibly stochastic) Loss function $f: \mathbb{R}^n \to \mathbb{R}$,
+			Initial point $x_0 \in \mathbb{R}^n$,
+			$c \in (0, 1)$,
+			Initial step size $\stepSizeInit > 0$,
+			Contraction factor $\beta \in (0, 1)$,
+			Backtracking steps $B \in \mathbb{N}$,
+            Convergence tolerance $\epsilon > 0$
+		}
+
+		\hfill
+		\\
+        \STATE Initialize iteration counter $k \leftarrow 0$
+        \WHILE{$\|\nabla f(x_k)\| > \epsilon$}
+            \STATE Compute descent direction $\update_k$ \COMMENT{e.g., $\update_k = -\nabla f(x_k)$}
+            
+		    \STATE Set $\mathcal{H}_k = \left\{
+			    \stepSize_k^{(i)} = \stepSizeInit \beta^{i} \mid i = 0, 1, \ldots, B \text{ and } f(x_k + \stepSize_k^{(i)} \update_k)
+			    \le f(x_k) + \stepSize_k^{(i)} c \inner{\nabla f(x_k)}{\update_k}
+		    \right\}$
+            
+            \IF{$\mathcal{H}_k$ is empty}
+                \STATE $\stepSize_k^* = \stepSizeInit \beta^B$ \COMMENT{Fallback if Armijo condition is not met}
+            \ELSE
+		        \STATE $\stepSize_k^* = \argmin_{\eta \in \mathcal{H}_k} f(x_k + \eta \update_k)$
+            \ENDIF
+            
+            \STATE Update point: $x_{k+1} = x_k + \stepSize_k^* \update_k$
+            \STATE Increment counter: $k \leftarrow k + 1$
+        \ENDWHILE
+        \RETURN $x_k$
+	\end{algorithmic}
+\end{algorithm}
+
+
+\begin{algorithm}[tb]
+	\caption{Argmin Non-monotone Line Search}
+    \label{alg:argmin-nonmonotone}
+	\begin{algorithmic}[1]
+		\REQUIRE {(Possibly stochastic) Loss function $f: \mathbb{R}^n \to \mathbb{R}$,
+			Initial point $x_0 \in \mathbb{R}^n$,
+			$c \in (0, 1)$,
+			$\xi \in [0, 1]$,
+			Initial step size $\stepSizeInit > 0$,
+			Contraction factor $\beta \in (0, 1)$,
+			Backtracking steps $B \in \mathbb{N}$,
+            Convergence tolerance $\epsilon > 0$
+		}
+
+		\hfill
+		\\
+        \STATE Initialize iteration counter $k \leftarrow 0$
+		\STATE Initialize $C_{-1} \gets 0$, $Q_0 \gets 0$
+        \WHILE{$\|\nabla f(x_k)\| > \epsilon$}
+            \STATE Compute descent direction $\update_k$ \COMMENT{e.g., $\update_k = -\nabla f(x_k)$}
+
+			\STATE Compute $Q_{k + 1} \gets \xi Q_k + 1$
+			\STATE Compute $\tilde C_k \gets \frac{\xi Q_k C_{k-1} + f(x_k)}{Q_{k+1}}$
+			\STATE Compute $C_k = \text{max} \left\{ \tilde C_k, f(x_k) \right\}$
+            
+		    \STATE Set $\mathcal{H}_k = \left\{
+			    \stepSize_k^{(i)} = \stepSizeInit \beta^{i} \mid i = 0, 1, \ldots, B \text{ and } f(x_k + \stepSize_k^{(i)} \update_k)
+			    \le C_k + \stepSize_k^{(i)} c \inner{\nabla f(x_k)}{\update_k}
+		    \right\}$
+            
+            \IF{$\mathcal{H}_k$ is empty}
+                \STATE $\stepSize_k^* = \stepSizeInit \beta^B$ \COMMENT{Fallback if Non-monotone condition is not met}
+            \ELSE
+		        \STATE $\stepSize_k^* = \argmin_{\eta \in \mathcal{H}_k} f(x_k + \eta \update_k)$
+            \ENDIF
+            
+            \STATE Update point: $x_{k+1} = x_k + \stepSize_k^* \update_k$
+            \STATE Increment counter: $k \leftarrow k + 1$
+        \ENDWHILE
+        \RETURN $x_k$
+	\end{algorithmic}
+\end{algorithm}
+
+\end{document}
