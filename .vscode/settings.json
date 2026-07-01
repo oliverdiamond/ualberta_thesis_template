@@ -13,5 +13,11 @@
         "titleBar.inactiveBackground": "#ff4dd199",
         "titleBar.inactiveForeground": "#15202b99"
     },
-    "peacock.color": "#FF4DD1"
+    "peacock.color": "#FF4DD1",
+    "grammarly.selectors": [
+        {
+            "language": "latex",
+            "scheme": "file"
+        }
+    ]
 }

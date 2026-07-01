@@ -146,7 +146,7 @@
 
 \begin{titlepage}
   \centering
-  \textbf{\large{Beyond Fixed Learning Rates: Globalization Strategies for Adaptive Step Size in Deep Reinforcement Learning}}
+  \textbf{\large{Globalization Strategies for Adaptive Step Size in Deep Reinforcement Learning}}
   \vskip.5in by \vskip.5in
   \large{Oliver Diamond}
 
@@ -173,7 +173,7 @@ Add the abstract here.
 
 \onehalfspacing
 \chapter*{Preface} \addcontentsline{toc}{chapter}{Preface}
-Add the preface here.
+This thesis builds upon a submission to the 2026 Conference on Neural Information Processing Systems. The submission was created in collaboration with Samuel Neumann, Chen Fan, Martha White and Adam White. \todo{Describe who helped with what}. 
 
 \chapter*{Acknowledgements} \addcontentsline{toc}{chapter}{Acknowledgements}
 Add ack here.
@@ -188,48 +188,52 @@ Add ack here.
 \setcounter{page}{1}
 \renewcommand{\thepage}{\arabic{page}} % arabic numerals for page counter
 
-Deep reinforcement learning (RL) algorithms are notoriously sensitive to hyperparameters, often requiring manual
-tuning on each new environment to avoid poor performance~\cite{eimer2023hyperparameters,adkins2024method}. Setting the step size hyperparameter is particularly challenging because good values are often determined by the optimization landscape, and good performance is typically achieved by changing it over time. Even modern optimizers like Adam and RMSprop suffer from step size sensitivity with deep RL algorithms~\cite{ellis2024adam,donancio2024dynamic,jordan2024cliff}. In fact, both algorithms can completely fail to learn in non-stationary prediction settings with a constant step size~\cite{jacobsen2019meta,degris2024step}, which is concerning due to the non-stationarity inherent in policy optimization.
+The performance of deep reinforcement learning algorithms is notoriously sensitive to hyperparameters, often requiring manual tuning in each unique environment to avoid poor performance \cite{eimer2023hyperparameters,adkins2024method}. Setting the step size hyperparameter is particularly challenging because good values are often determined by the optimization landscape, and good performance is typically achieved by changing it over time. Even modern optimizers like Adam and RMSprop suffer from step size sensitivity with deep RL algorithms \cite{ellis2024adam,donancio2024dynamic,jordan2024cliff}. In fact, both algorithms can completely fail to learn in non-stationary prediction settings with a constant step size \cite{jacobsen2019meta,degris2024step}, which is concerning due to the non-stationarity inherent in policy optimization.
 
 In practice, tuning step size is common for deep RL algorithms. Perhaps the most common
 approach is a grid search, where a wide range of hyperparameter combinations are tested. Grid searches can be
-effective but typically require the parallelism allowed for by a simulator, limiting their applicability. Further these broad hyperparameter searches are not generally possible for agents deployed in real-world settings such as industrial control~\cite{luo2022controlling,janjua2024gvfs}, where testing multiple
+effective but typically require the parallelism allowed for by a simulator, limiting their applicability. Further these broad hyperparameter searches are not generally possible for agents deployed in real-world settings such as industrial control\cite{luo2022controlling,janjua2024gvfs}, where testing multiple
 hyperparameter configurations can be time-consuming or dangerous. Finally, grid searches typically find a fixed step size that works well on average throughout learning and across runs -- not a step size tailored to a specific agent on a specific time step.
 Bayesian and evolutionary methods can more intelligently and efficiently identify good fixed hyperparameter settings than
-grid searches, but nevertheless suffer from similar drawbacks in terms of the need for extensive computation and applicability to simulators~\cite{parker2022automated}. Fixed default step sizes exist for common
+grid searches, but nevertheless suffer from similar drawbacks in terms of the need for extensive computation and applicability to simulators \cite{parker2022automated}. Fixed default step sizes exist for common
 benchmarking suites like MuJoCo Playground and the Arcade Learning Environment (ALE). \tocite{ALE, MuJoCo Playground}
-However, different repositories use slightly different settings and recent work has demonstrated that these
-defaults 1) typically do not work across tasks, 2) are not optimized for individual environments, and 3) are sensitive to
+However, different repositories use slightly different settings, and recent work has shown these
+defaults typically do not work across tasks, are not optimized for individual environments, and are sensitive to
 small changes \cite{patterson2024chtb,adkins2024method,eimer2023hyperparameters}.
-This is a major obstacle to deployment of these deep RL methods in new domains, especially by non RL experts.
+This poses a major obstacle to the deployment of deep RL methods in new domains, especially for non RL experts.
 
 Meta-gradient approaches frame
-hyperparameter tuning as optimization, iteratively learning hyperparameters to optimize a hyperparameter
-objective. Numerous meta-learning approaches specialized to learning step sizes have been explored over the years, including Incremental Delta-Bar-Delta~\cite{sutton1992adapting}, Stochastic Meta Descent~\cite{schraudolph1999local}, Autostep \cite{mahmood2012tuning}, AdaGain \cite{jacobsen2019metadescent}, and similar extensions to Temporal-Difference
+hyperparameter tuning as optimization, iteratively learning hyperparameters to optimize performance on a given task. Numerous approaches for meta-learning step sizes have been explored, including Incremental Delta-Bar-Delta \cite{sutton1992adapting}, Stochastic Meta Descent \cite{schraudolph1999local}, Autostep \cite{mahmood2012tuning}, AdaGain \cite{jacobsen2019metadescent}, and similar extensions to Temporal-Difference
 (TD) learning \cite{kearney2018tidbd,young2019metatrace,thill2015temporal}.
 In deep RL, meta-gradients have been used to learn effective discount factors, $\lambda$-returns, update targets for value
 functions and policies, full objective functions, intrinsic rewards, and other hyperparameters
 \cite{xu2018meta,xu2020meta,oh2020discovering,kirsch2020improving,wang2020metasac,zheng2020what,bonnet2022debiasing,zahavy2020self,zheng2018learning}.
 Meta-gradients have even been used to learn the optimization algorithm itself
 \cite{andrychowicz2016learning,lan2024learning}.
-These methods are promising but often significantly increase training time and have sensitive hyper-hyperparameters that require tuning.
+These methods are promising but often significantly increase runtime and can be sensitive to hyper-hyperparameters that require tuning.
 
-In the optimization literature, a more common method of selecting step sizes is to use a backtracking
-line search \cite{nocedal2006numerical}. Line searches search along a given update direction $\update$ for a step size
-which reduces the objective value sufficiently.
-Line searches are agnostic to the way in which $u$ is produced, often only requiring it to be descent directions on the objective. In this way, they are
-general and can be layered on top of popular modern optimizers such as RMSprop \cite{Hinton2012lecture} to automate step size selection and adapt the step size over the course of an experiment.
-Although originally designed for deterministic objectives, line search methods have been
-extended to the stochastic setting in supervised learning and work in the tabular RL case, demonstrating impressive empirical performance on
-popular benchmarks and enjoying robust theoretical guarantees \cite{lu2024towards,vaswani2019painless,galli2023monotone,shea2024so,vaswani2020adaptive,fox2024glocal,vaswani2025armijo,fan2023bisls,jiang2023adaptive}. Outside a minor role in the TRPO algorithm~\cite{schulman2017trust}, to the best of our knowledge, stochastic line search methods have not been successfully combined with modern optimizers in deep RL.
+In the optimization literature, two common methods of selecting step size are backtracking
+line search and trust region methods \cite{nocedal2006numerical}. These two classes of algorithms are known as globalization strategies because they guarantee convergence to a local minimum from any starting point in the full-batch, supervised setting. This addresses a key failure mode of traditional optimizers like Newton's method, which can easily diverge, oscillate, or stagnate when applied to non-convex objectives with a fixed step size. 
 
-In this paper, we investigate line search in RL prediction and control settings.
-We introduce a new algorithm that is more effective for RL, that uses a parallel search to avoid sequential backtracking and common initialization heuristics~\cite{vaswani2019painless,galli2023monotone}, and allows for use of a more effective selection criterion based on the step size that minimizes the objective the most.
-We prove that this approach converges linearly under an interpolating condition matching the rate of previous (stochastic) line-search methods \cite{vaswani2019painless,galli2023monotone}, when layered on-top of standard optimizers like RMSProp or AMSgrad, a convergent variant of Adam.
-We provide extensive suite of experiments comparing several line search methods in Atari 2600 and MuJoCo in both prediction and control, highlighting that our algorithm performs amongst the best across these settings.
-Finally, we outline a specific failure case of line searches on Atari 2600, namely that they may exacerbate convergence to poor, sharp minima.
+Given an update direction $\update$, backtracking line search methods identify the largest step size such that the new parameters resulting from the update yield a sufficient decrease. This approach is agnostic to the means by which $\update$ is produced, typically only requiring that it be a descent direction in the objective. This generality allows line search to be layered on top of modern first-order optimizers such as RMSprop \cite{Hinton2012lecture} to facilitate adaptive step size selection tailored to each update. Trust region methods use a heuristic to define a safe region—typically a ball of a fixed radius $\Delta$ centered around the current parameters—and then select an update vector by exactly or approximately minimizing a local model of the objective subject to this constraint. Similarly to line search, $\Delta$ is updated over time based on the ratio of the true change in the loss after the update to the predicted decrease from the local model. This approach requires both a model of the objective and a solver to produce the update vector. While not common in practice, trust region method can also be combined with modern first-order optimizers by scaling any $\update$ to norm $\Delta$. In this framework, $\frac{\Delta\update}{\norm{\update}}$ may be viewed as the exact solution to the constrained optimization problem produced by the trust region when approximating the objective as a hyperplane with gradient $-\update$.
 
-\chapter{Problem Formulation and Background} \label{sec: background}
+Although originally designed for deterministic objectives, both line search and trust region methods have been extended to the stochastic setting in supervised learning, demonstrating impressive empirical performance on popular benchmarks and enjoying robust theoretical guarantees \cite{lu2024towards,vaswani2019painless,galli2023monotone,shea2024so,vaswani2020adaptive,fox2024glocal,vaswani2025armijo,fan2023bisls,jiang2023adaptive}\todo{Move rl citations from here to next sentence, replace with trust region citations for stochastic deep SL}.
+
+Globalization strategies have been utilized much less in deep reinforcement learning. Line search methods have been employed in the tabular RL setting \tocite{Grab from long list before this} and were more recently used with modern optimizers for prediction in deep RL \cite{PALS2026}. Trust region methods have been used for control in deep RL with TRPO \cite{schulman2015trust}, which uses a backtracking line search to keep each update within a KL trust region in policy-distribution space. However, to the best of our knowledge, neither line search nor trust region methods have been used to adapt the step size for an underlying optimizer with respect to the objective in deep RL control.
+
+\section{Contributions}
+This thesis examines globalization strategies for adaptive step size selection in deep RL control. We provided an extensive empirical study of several line search and trust region methods when used with popular model-free RL algorithms and base optimizers across diverse environments. Additionally, despite their success across diverse settings, globalization strategies have three key limitations that may prevent their adoption in deep RL, each of which is characterized and addressed in this work as follows:
+
+\begin{enumerate}
+\item \textbf{Incompatibility with momentum.} Globalization strategies cannot be applied soundly when the underlying optimizer uses momentum because $\update$ is no longer guaranteed a descent direction. This issue has resulted in poor performance when naively using linesearch with AMSGrad \tocite{amsgrad} in supervised learning due to all step sizes frequently being rejected \tocite{ls+ams paper, not painless}. The Adam optimizer \cite{kingma2015adam} is ubiquitous in deep RL, and we characterize how naively applying globalization strategies with Adam results in poor performance in this setting as well. To address this issue, we adopt the approach from \cite{vaswani2020adaptive} introduced to combine line search with Polyak momentum, and show it is essential to the success of both line search and trust region methods with Adam in deep RL.
+\item \textbf{Sensitivity to sharp loss.} Line search methods have in some cases been shown to select highly conservative step sizes in the full batch supervised learning \tocite{roulet2024stepping}, resulting in slow convergence to sharp local minima with poor generalization performance. This phenomenon has also been shown to arise to the deep RL prediction setting \cite{PALS2026}. We identify when this issue appears with line search and trust-region methods in control and demonstrate Sharpness Aware Minimization \tocite{SAM} as a promising remedy. 
+\item \textbf{High computational overhead.} While many heuristics have been proposed for adaptively setting the starting search point for linesearch methods so as to reduce the number of required backtracking steps, these methods can produce up to $n$ additional forward passes each update, where $n$ is the number of examined step sizes, which can be of . Some methods like the Parallel Armijo Line Search (PALS) \cite{PALS2026} utilize parallelism to test a large set of candidate step sizes in constant time. Additionally, traditional trust region methods often require a second order local model of the objective, which can be expensive to compute for large neural networks. We introduce a lightweight, first-order trust region approach that matches or exceeds the performance of PALS across all examined settings while only requiring one additional forward pass per update.
+\end{enumerate}
+
+\chapter{Background} \label{sec: background}
+\todo{Not sure if this is more general, intuitive treatment is better served in the beginning of intro, or if it's better here, or if not needed}
+The reinforcement learning (RL) problem is a formalism for an individual interacting with the world with the intention of achieving goals \cite{sutton}. In RL, an agent is tasked with maximizing the sum of a reward signal during sequential interaction with an environment. On each of a series of discrete timesteps, the agent observes the state of the environment and takes an action based on its internal decision-making algorithm, which we refer to as a policy. On the next timestep, as a result of the agent's action and the environment dynamics, the environment state changes and the agent receives a scalar reward. The agent then takes another action based on the newly observed state, and the cycle repeats. The totality of all these interactions with the environment may be viewed as the agent's lifetime. In the commonly studied episodic variant of the RL problem, this agent-environment interaction loop is divided into a sequence of episodes that always begin in a special starting state and end in a special terminal state, with the primary consequence being that when selecting actions the agent is only incentivized to maximize the rewards received within the current episode rather than across all future timesteps. Reinforcement learning algorithms can be thought of as intelligent agents in that they frequently make use of newly gathered information about the environment (namely that taking an action $A$ in state $S$ led to a new state $S'$ with reward $R$) to update their policy so that in the future it may achieve higher reward. 
+% Give intuitive treatment of step size, motivating the work. 
 
 We formalize the agent-environment interaction as a Markov Decision Process (MDP), defined by the tuple
 $(\stateSpace, \actionSpace, \rewardFunction, \dynamics, \startStateDistribution, \discount)$, where $\stateSpace$ and $\actionSpace$ denote the state and action spaces, respectively. The reward function
@@ -258,12 +262,35 @@ is
 $ \qfn(s, a) = \mathbb{E}_\pi \left[ G_t \mid S_t = s,
 A_t = a \right] $.
 These functions are estimated with parameterized functions $\vparam$ and $\qparam$ where $\vparams$ and $\qparams$ are learnable parameters.
-The task of accurately estimating these values for a fixed policy is known as the \textit{prediction} problem. Monte Carlo
+
+
+% Subsection: Prediction
+% Learning value functions, explain TD and monte carlo, and lambda returns
+The task of accurately estimating these values for a fixed policy is known as the \textit{prediction} problem, whereas ... is known as control. 
+
+Monte Carlo
 methods for prediction provide unbiased targets for learning these value functions using full trajectory rollouts, but
 can suffer from high variance. Temporal Difference (TD) methods can reduce variance by
 bootstrapping targets from value estimates, though they may introduce some bias.
 
-\section{Armijo and Nonmonotone Line Searches}
+% subsection: Control
+
+% subsection: Value based methods: GPI, SARSA, Q-learning
+
+% subsection: Policy gradient: vanilla pg, pg with baseline, actor-critic
+
+
+% Section: Deep RL
+
+% Explain function approximation (what do we do if there are too many states for a table)
+
+% Introduce DQN 
+
+% Introduce PPO
+
+\section{Line Search Methods}
+We introduce a new algorithm that is more effective for RL, that uses a parallel search to avoid sequential backtracking and common initialization heuristics\cite{vaswani2019painless,galli2023monotone}, and allows for use of a more effective selection criterion based on the step size that minimizes the objective the most.
+
 
 Consider the stochastic minimization problem  $\xstar = \argmin_{x \in
 \mathbb{R}^n} f_k(x)$, where $f_k$ is an unbiased stochastic estimate of an objective function $f$. Iterative algorithms typically update the current estimate $\xAt{k}$ by choosing an
@@ -299,7 +326,7 @@ Many non-monotone conditions exist; we use one that requires progress over an ex
 where again $c \in (0, 1)$ and $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$. Here, $C_k$ is a bias-corrected exponential moving average of function values, except that
 when $f_k(\xAt{k}) > \tilde C_k$, the term $C_k = f_k(\xAt{k})$ subsumes the weight for the past function values.
 
-\chapter{Parallel Argmin Line Search (PALS)} \label{sec: pals}
+\subsection{Parallel Argmin Line Search (PALS)} \label{sec: pals}
 
 We propose a framework for integrating line search techniques into RL to adaptively determine step sizes for both value function approximation and policy optimization.
 As discussed, a primary hurdle to adopting line searches is the sequential backtracking procedure.
@@ -327,7 +354,14 @@ The requirement $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$ disqualifies man
 \end{equation}
 while still updating with $u_k = -A_k^{-1} m_k$. We adopt this approach when using PALS with Adam. Importantly, the entire line search remains parallelizable.
 
-\chapter{Empirical Study} \label{sec: empirical_study}
+\section{Trust Region Methods}
+
+\subsection{The Cauchy Point}
+
+% Subsection for the more recent algo that you compare to (the first order one)
+
+
+\chapter{Empirical Study \todo{ Not yet adapted no need for Adam to review yet}} \label{sec: empirical_study}
 
 \section{Experiment Setup}
 To ensure consistency, we maintained identical hyperparameters across all experiments unless otherwise noted. MuJoCo and Brax experiments use the standard PPO MLP: two hidden layers of 64 units with tanh activations \cite{shengyi2022the37implementation}. We used a minibatch size of 1024. Fixed step size baselines for SGD, RMSprop, and Adam were tuned via grid search over $\eta \in \{10^{-5}, \dots, 10^{-1}, 0.5\}$. Following \cite{neumann2023greedy}, we selected the step size $\eta$ that maximized aggregate performance across all seeds and environments after normalizing training loss (rescaling 5th and 95th percentiles to 0 and 1 respectively).
