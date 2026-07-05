@@ -258,9 +258,14 @@ The agent's objective is to maximize the expected discounted return, defined as 
 \section{Value Functions}
 To learn a policy which maximizes return, algorithms often rely on value functions, which quantify the utility of entering a state or executing an action in terms of the expected return for the event. The state-value function $\vfn: \stateSpace \to \RR$ is the expected return when starting in some state and taking actions according to policy $\pi$ thereafter, defined as $\vfn(s) = \mathbb{E}_\pi \left[ G_t \mid S_t = s \right] $. Similarly, the action-value function $\qfn: \stateSpace \times \actionSpace \to \RR$ gives the expected return for taking an action in some state and then following $\pi$, defined as $ \qfn(s, a) = \mathbb{E}_\pi \left[ G_t \mid S_t = s, A_t = a \right] $. 
 
+\section{Function Approximation} 
+% parameters are typically a table but what do we do when their are too many states 
+% Function approximation
+% Because the function approximation case is a generalization of the tabular case, we present all algos for this setting. 
 \section{Prediction Algorithms}
 % todo: Intro sentence motivating how prediction is important first step if you want to do control. 
-The task of accurately estimating $v_\pi$ and $q_\pi$ for a fixed policy is known as the prediction problem. Algorithms for prediction typically perform iterative policy evaluation, a process where estimates of $\vfn$ and/or $\qfn$ are incrementally updated to approach the true values. We define these estimates as parameterized functions $\vparam$ and $\qparam$ where $\vparams$ and $\qparams$ are learnable parameters. If $\dynamics$ is known these updates can be computed analytically via dynamic programming. When $\dynamics$ is unknown and the agent does not learn a model of $\dynamics$, it must compute updates empirically using data gathered from interaction with the environment. This class of algorithms, known as model-free methods, are the focus of this work.
+The task of accurately estimating $v_\pi$ and $q_\pi$ for a given fixed policy is known as the prediction problem. Algorithms for prediction typically perform iterative policy evaluation, a process where estimates of $\vfn$ and/or $\qfn$ are incrementally updated to approach the true values. We define these estimates as parameterized functions $\vparam$ and $\qparam$ where $\vparams$ and $\qparams$ are learnable parameters. 
+If $\dynamics$ is known these updates can be computed analytically via dynamic programming. When $\dynamics$ is unknown and the agent does not learn a model of $\dynamics$, it must compute updates empirically using data gathered from interaction with the environment. This class of algorithms, known as model-free methods, are the focus of this work.
 
 % Monte Carlo
 % todo: sentence explaining how in order to learn values from experience we just need to get samples of the return and then the update rule moves our estimates close to the return because value function are just the expected return. 
@@ -283,29 +288,60 @@ At one extreme, when $N = 0$ this above reduces to the TD update given above, wh
 The $\lambda$ return is an update target that posits an answer to the above, defined as an expoentially decaying weighted average of all $N$-step returns with decay rate $\lambda$.
 % todo lambda return update pseudocode. 
 Note that after summing the $N$ step returns up to $N=T-1$ %todo make sure this is consistent with the eq above
-all the remaining weight is placed on the monte-carlo return for the episode. Similarly to $N$, tuning $\lambda$ allows for smooth interpoliation between the TD and monte carlo targets, with $\lambda=0$ and $\lambda=1$ reducing, to the TD(0) and monte carlo targets, respectively. In practice, strong performance is typically obtained with an intermeate value of lambda in %todo inline latex range .7 to .95
-, 
-%While it may appear that the $\lambda$ return suffers the same drawback as monte carlo methods in that the agent must wait to compute an update until all $N$-step returns are available at the end of the current epsisode, there exists an incremental online update that produces identical value estimates. 
-The $\lambda$ return played a key role in early successes of RL \tocite{td gammon} and is commonly employed in state of the art methods today \tocite{ppo, gae}.
+all the remaining weight is placed on the monte-carlo return for the episode, though in practice the summation can stop at any value of $N$, which is reffered to as a truncated $\lambda$ return. Similarly to $N$, tuning $\lambda$ allows for smooth interpoliation between the TD and monte carlo targets, with $\lambda=0$ and $\lambda=1$ reducing, to the TD(0) and monte carlo targets, respectively. In practice, strong performance is typically obtained with an intermeate value of lambda in %todo inline latex range .7 to .95
+, \tocite{citation} which allows for faster credit assignment than the TD(0) while avoiding the high-variance updates of monte carlo methods. \todo{not sure if i need this nod to the backward view given that we only use lambda returns for ppo in the thesis which uses forward view}
+While it may appear that the $\lambda$ return suffers the same drawback as monte carlo methods in that the agent must wait to compute an update until all $N$-step returns are available at the end of the current epsisode, there exists an incremental online update rule that produces identical value estimates at the end of each episode \tocite{citation}. However, algorithms that utilize the incremental form of the $\lambda$ return update are beyond the scope of this work. 
+The $\lambda$ return played a key role in early successes of RL in board games \tocite{td gammon} and remains commonly employed in modern methods \tocite{ppo, gae}.
 % todo replace $\lambda$ return with $\lambda$-return in all instances
 
-% Wrap up sentence explaining 
 
 \section{Control Algorithms}
-% Explain GPI
+While prediction algorithms are intrinsically useful for analyzing fixed policies, their true utility is realized in the context of control. We now examine the full RL control problem, where the agent is tasked with discovering an optimal policy. 
 
-\subsection{Value-Based Methods}
-% GPI, SARSA, Q-learning
+Most control algorithms are well thought of as two alternating, complementary processes: policy evaluation and policy improvement. Policy evaluation proceeds just as in the prediction setting, where value estimates $\vparam$ or $\qparam$ are incrementally updated to approach $\vfn$ or $\qfn$. In the policy improvement phase, the agent's policy is updated to select actions with high value according to the current value estimates. The new and improved policy is then evaluated, and the cycle repeats in what is referred to as generalized policy iteration (GPI). % todo: don't like "in what is referred to as" 
+% todo: after the above sentence i want a sentence explaining how we dont need to fully evaluate before improving again. Or if that would be better placed in the q-learning section that is fine. 
 
-\subsection{Policy Gradient Methods} 
-%vanilla pg, pg with baseline, actor-critic
+% todo: should the below go somewhere else like at the top of the next section or the top of this one? not sure...
+Control algorithms can generally be grouped into two classes of methods: value-based and policy gradient. Value-based methods only learn $\qparam$ and implicitly define the policy as a function of the learned action-value estimates. Policy gradient methods explicitly learn a parameterized policy $\pi_\theta$ with parameters $\theta$, though they may also make use of a learned value function.
+
+\subsection{Value Based Methods}
+Value-based methods for control are closely aligned with the prediction algorithms discussed in \tocite{ref to pred section above}. The primary change is that instead of being fixed, the policy is periodically updated as outlined in the GPI framework. For value-based methods, the policy impovement step consists of greedifying the policy with respect to the current value estimates. Where given a policy $\pi$ the greedy policy $\pi^'=$ %todo finish this math and make it an equation like for e-greedy below. 
+In the tabular setting, if the value estimates have converged to the true values, the greedy policy is garanteed to perform as well or better than the old policy: % todo define this in terms of J(pi) and the two polices. 
+as demonstrated in the policy improvement theorem \tocite{policy imporovement theorem}.  % todo: is this a fair qualification (the old estimates convering) i guess in DP they dont have to converge, but i think they do when learning online? 
+However, in order for the policy to converge to $\pi^*$, the probability of any state-action pair must not go to zero, otherwise the policy may fail to sample the actions with higher value that would trigger a change in the policy during the improvement step, and thus get stuck in sub-optimal behavior. % todo: bad clunky sentence, needs to be more articulate and percise. Also want to have the def of soft policies here so i can use it below. 
+To address this need for sustained exploration, rather than fully gredifying the policy in the improvement phase, value-based methods often learn $\epsilon$-greedy policies using the following update rule
+%todo make the below an eq and use my q function instead of state value function and make to so its for pi prime so that it makes sense as an update
+$\pi(a|s) = \begin{cases} 
+(1 - \epsilon) + \frac{\epsilon}{|\mathcal{A}|}, & \text{if } a = \text{argmax}_{b} Q(s,b) \\ 
+\frac{\epsilon}{|\mathcal{A}|}, & \text{if } a \neq \text{argmax}_{b} Q(s,b) 
+\end{cases}$
+GPI with the $\epsilon$-greedy update above coverges to the optimal $\epsilon$-greedy policy in the tabular setting. In practice, if $\epsilon$ annealed over time or set to a small value, a final greedification after the $\epsilon$-greedy policy stabalizes often produces $\pi^*$. However, this is not garanteed, motivating the need for a method capable of learning $\pi^*$ using experience gathered under any policy with support over the entire state-action space. % todo is this sentence correct and appropriately motivating q-learning? and is the sentence before it useful or needed?
+
+The Q-learning algorithm \tocite{W and Dayan} is a ubiquitous value-based method that performs GPI for a deterministic greedy policy based on experience gathered under any soft-policy, known as the behavior policy, though typically an $\epsilon$-greedy policy is used in practice. The algorithm 
+%is actually a special case of the Expected SARSA method \cite{sutton1998introduction}, which 
+exploits the fact that the envrionments transition dynamics are independent of the policy being evaluated, and therefore given a state-action pair, the next state and reward can be used to construct an estimate of $\qfn$ for any policy by simply replacing value of the next action in \tocite{equation for td update} with a max over the action values in the next state, implicitly implementing alternating individual steps of policy evaluation with the TD(0) update for action values and greedy policy improvement. %todo this sentence is a run on and needs to be made into two clear and concise sentences
+% todo: pseudocode for Q learning, consistent with the formatting for the prediciton algos pseudocode 
+As the policy used for gathering data differs from the greedy policy being evaluated, Q-learning is classified as an \textit{off-policy} learning algorithm. It allows for the sustained exploration needed for theoretically sound convergence in the tabular setting, while maintaining the ability to learn $\pi^*$ via greedy policy updates. A key benefit of off-policy learning that cannot be underemphasized is the ability to learn from experience generated by any policy, which proves essential to its use with deep neural networks discussed in \todo{DQN section reference}. 
+%A minor disadvantage of this approach is the mismatch between the state visitation distributions for the greedy policy and the behavior policy  % todo: use my \stateDistribution notation instead of writing it out
+%can result in selecting actions that may be optimal for the target policy but are actually suboptimal for the soft behvaior policy, resulting in poor performance during training but having no affect on the quality of the target policy. \tocite{cliff walking if that was in a paper or just the book}. 
+
+\subsection{Actor-Critic Methods} 
+% vanilla pg. Can be thought of as repeated improvement steps without explicit evaluation. 
+
+% actor-critic
+% Note that this can be thought of as another instance of GPI
+
+
+% Continuous actions (look at s and b)
 
 \section{Deep Reinforcement Learning}
 
-\subsection{Function Approximation} %  approximation (what do we do if there are too many states for a table)
-% Linear and non-linear with NN
-
 \subsection{Deep Q-Learning} 
+Deep Q-Learning (DQN) \tocite{dqn} is a seminal deep RL algorithm that was introduced to stabalize Q-learning when paired with modern deep neural networks for function approximation. The algorithm addresses two significant issues that arise from naively using a neural network for function approxmiation in \tocite{q learning algo pseudocode above}. The first is the deadly triad \cite{sutton1998introduction} of bootstrapping, off-policy learning, and function approximation, which has been proven to cause value estimates to diverge in some MDPs even in the linear case \tocite{counterexample}, and has been shown empirically to cause significant instability with neural networks. %todo consice description of deadly triad mechanism
+To address this, DQN periodically freezes and stores a copy of the network parameters as a seperate target network, which is used in place of the value network in the update target until the next refresh. This increases the number of steps of policy evaluation per policy improvement step, greatly moderating the rate of any potential divergence caused by the triad. 
+
+The second issue is that neural networks are prone to instability with non independent-and-identically-distributed (i.i.d) data \tocite{citation}. Individual transitions collected during sequential interaction with an MDP are both correlated in time 
+These two changes effectively reduce the online control setting to a sequence of supervised regression problems, which is 
 
 \subsection{Proximal Policy Optimization}
 
