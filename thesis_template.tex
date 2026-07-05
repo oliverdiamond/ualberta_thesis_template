@@ -189,7 +189,7 @@ Add ack here.
 \setcounter{page}{1}
 \renewcommand{\thepage}{\arabic{page}} % arabic numerals for page counter
 
-The performance of deep reinforcement learning algorithms is notoriously sensitive to hyperparameters, often requiring manual tuning in each unique environment to avoid poor performance \cite{eimer2023hyperparameters,adkins2024method}. Setting the step size hyperparameter is particularly challenging because good values are often determined by the optimization landscape, and good performance is typically achieved by changing it over time. Even modern optimizers like Adam and RMSprop suffer from step size sensitivity with deep RL algorithms \cite{ellis2024adam,donancio2024dynamic,jordan2024cliff}. In fact, both algorithms can completely fail to learn in non-stationary prediction settings with a constant step size \cite{jacobsen2019meta,degris2024step}, which is concerning due to the non-stationarity inherent in policy optimization.
+The reinforcement learning (RL) problem has proven to be a flexible, yet useful formalism for tasks requiring intelligent, goal-directed behavior. From superhuman Go play \tocite{AG} to professional-level robotic table tennis \tocite{SONY}, the feats of narrow intelligence achieved by deep RL algorithms in recent years have been immense. Yet, despite these successes, the performance of deep RL algorithms remains notoriously sensitive to hyperparameters, often requiring manual tuning in each unique environment to avoid poor performance \cite{eimer2023hyperparameters,adkins2024method}. This sensitivity limits the generality of these learning algorithms, as these exist many real-world domains where tuning is intractable. Setting the step size hyperparameter is particularly challenging because good values are often determined by the optimization landscape, and good performance is typically achieved by changing step size over time. Even modern optimizers like Adam and RMSprop suffer from step size sensitivity with deep RL algorithms \cite{ellis2024adam,donancio2024dynamic,jordan2024cliff}. In fact, both optimizers can completely fail to learn in non-stationary prediction settings with a constant step size \cite{jacobsen2019meta,degris2024step}, which is concerning due to the non-stationarity inherent in policy optimization.
 
 In practice, tuning step size is common for deep RL algorithms. Perhaps the most common
 approach is a grid search, where a wide range of hyperparameter combinations are tested. Grid searches can be
@@ -233,11 +233,11 @@ This thesis examines globalization strategies for adaptive step size selection i
 \end{enumerate}
 
 \chapter{Background} \label{sec: background}
-The reinforcement learning (RL) problem is a formalism for an individual interacting with the world with the intention of achieving goals \cite{sutton}. In RL, an agent is tasked with maximizing the sum of a reward signal during sequential interaction with an environment. On each of a series of discrete timesteps, the agent observes the state of the environment and takes an action according to its internal decision-making algorithm, which we refer to as a policy. On the next timestep, as a result of the agent's action and the environment dynamics, the environment state changes and the agent receives a scalar reward. The reward may be positive, negative, or neutral (zero), indicating the desirability of the immediate outcome of the action. The agent then takes another action based on the newly observed state, and the cycle repeats. The totality of all these interactions with the environment is referred to as the agent's lifetime. 
+The reinforcement learning problem is a formalism for an individual interacting with the world with the intention of achieving goals \cite{sutton}. In RL, an agent is tasked with maximizing the sum of a reward signal during sequential interaction with an environment. On each of a series of discrete timesteps, the agent observes the state of the environment and takes an action according to its internal decision-making algorithm, which we refer to as a policy. On the next timestep, as a result of the agent's action and the environment dynamics, the environment state changes and the agent receives a scalar reward. The reward may be positive, negative, or neutral (zero), indicating the desirability of the immediate outcome of the action. The agent then takes another action based on the newly observed state, and the cycle repeats. The totality of all these interactions with the environment is referred to as the agent's lifetime. 
 
 Algorithms designed for solving the RL problem can be thought of as intelligent agents in the sense that they make use of newly gathered information about the environment—namely, the experience of taking an action in some state, observing the resulting next state, and receiving a reward—to update their policy so that they may achieve higher reward in the future. Some experiences are highly informative and warrant a large change to the agent's behavior, while other experiences point only to a small adjustment. The primary mechanism for controlling the magnitude of an update is known as the step size. Its role is especially important for modern RL algorithms, where a single update based on an experience in a given state can affect behavior across many other states in ways that are difficult to predict. 
 
-Yet, the step size is typically fixed, limiting an algorithm's ability to adapt quickly and intelligently upon discovering new information about the world. Additionally, different environments often require step sizes orders of magnitude apart to attain strong performance. This limits the applicability of fixed step size methods for real-world deployment when the algorithm's settings, known as hyperparameters, cannot be carefully tuned ahead of time in simulation. Both these concerns motivate learning algorithms that can dynamically adjust their step size at each update. This chapter provides a formal treatment of the reinforcement learning problem, introduces several canonical RL algorithms and their modern deep-learning counterparts, and defines two promising approaches for adaptive step size: line search and trust region methods.
+Yet, the step size is typically fixed, limiting an algorithm's ability to adapt quickly and intelligently upon discovering new information about the world \tocite{citation}. Additionally, different environments often require step sizes orders of magnitude apart to attain strong performance \tocite{citation}. This limits the applicability of fixed step size methods for real-world deployment when the algorithm's settings, known as hyperparameters, cannot be carefully tuned ahead of time in simulation \tocite{Citation}. Both these concerns motivate learning algorithms that can dynamically adjust their step size at each update. This chapter provides a formal treatment of the reinforcement learning problem, introduces several canonical RL algorithms and their modern deep-learning counterparts, and defines two promising approaches for adaptive step size: line search and trust region methods.
 
 \section{Markov Decision Processes}
 The agent-environment interaction loop described above is formalized as a Markov Decision Process (MDP), defined by the tuple $(\stateSpace, \actionSpace, \rewardFunction, \dynamics, \startStateDistribution, \discount)$, where $\stateSpace \subseteq \mathbb{R}^d$ and $\actionSpace \subseteq \mathbb{R}^m$ denote the state and action spaces, respectively. The reward function
@@ -253,15 +253,16 @@ the current state $S_t$ and selects an action $A_t \sim \pi(\cdot \mid S_t)$ acc
 
 In the commonly studied episodic variant of the RL problem, the agent-environment interaction loop is divided into a sequence of episodes, each of which ends when the agents a special terminal state $S_T$ as determined by $\dynamics$. The terminal state always transitions to a new state sampled from $\startStateDistribution$. In this work, we are only concerned with episodic MDPs.
 % Todo: define trajectory of experience in the episodic case and then define G_t for the episodic case. 
-The agent's objective is to maximize the expected discounted return, defined as $J(\pi) = \mathbb{E}_{\pi, \dynamics, \startStateDistribution} \left[ G_0 \right]$. The task of discovering an optimal policy $\pi^* = \arg\max_\pi J(\pi)$ is referred to as the \textit{control} problem.
+The agent's objective is to maximize the expected discounted return, defined as $J(\pi) = \mathbb{E}_\pi \left[ G_0 \right]$. The task of discovering an optimal policy $\pi^* = \arg\max_\pi J(\pi)$ is referred to as the \textit{control} problem.
 
 \section{Value Functions}
 To learn a policy which maximizes return, algorithms often rely on value functions, which quantify the utility of entering a state or executing an action in terms of the expected return for the event. The state-value function $\vfn: \stateSpace \to \RR$ is the expected return when starting in some state and taking actions according to policy $\pi$ thereafter, defined as $\vfn(s) = \mathbb{E}_\pi \left[ G_t \mid S_t = s \right] $. Similarly, the action-value function $\qfn: \stateSpace \times \actionSpace \to \RR$ gives the expected return for taking an action in some state and then following $\pi$, defined as $ \qfn(s, a) = \mathbb{E}_\pi \left[ G_t \mid S_t = s, A_t = a \right] $. 
-the recursive definitions of $\vfn$ and $\qfn$ given below.
-% TODO recursive defs using expectation
+Both of these functions have recursive definitions given by the Bellman equations for $\vfn$ and $\qfn$ \tocite{Bellman}, which serve as the foundation for the RL algorithms examined in this work. 
+% todo: make below into equation not inline and also add line below expectation giving the full expanded double summaton equatilty from sutton and barto. 
+$\vfn(s) = \mathbb{E}_\pi \left[ R_{t+1} + \gamma \vfn(S_{t+1}) \mid S_t = s \right] $
+$\qfn(s, a) = \mathbb{E}_\pi \left[ R_{t+1} + \gamma \qfn(S_{t+1}, A_{t+1}) \mid S_t = s, A_t = a \right] $
 
-
-Because the true value are typically unknown to the agent, reinforcement learning methods often learn estimates of these functions. We define these estimates as parameterized functions $\vparam$ and $\qparam$ where $\vparams$ and $\qparams$ are learnable parameters. 
+Because the true value are typically unknown to the agent, reinforcement learning methods often learn estimates of $\vfn$, $\qfn$ or both. We define these estimates as parameterized functions $\vparam$ and $\qparam$ where $\vparams$ and $\qparams$ are learnable parameters. 
 
 \subsection{Value Function Approximation} 
 If the cardinality of \stateSpace space (or $\stateSpace x \actionSpace$ in the case of action-value estimation) is relatively small, % todo: instead of writing out cardinality, use math notaiton
@@ -273,10 +274,7 @@ features corresponding to indicator functions for each state $s \in \stateSpace$
 
 \section{Prediction Algorithms}
 % todo: Intro sentence motivating how prediction is important first step if you want to do control. 
-The task of accurately estimating $v_\pi$ and $q_\pi$ for a given fixed policy is known as the prediction problem. Algorithms for prediction typically perform iterative policy evaluation, a process where $\vparam$ or $\qparam$ is incrementally updated to approach the true state or state-action values, respectively. 
-If $\dynamics$ is known, these updates can be computed analytically via dynamic programming. When $\dynamics$ is unknown 
-%and the agent does not learn a model of $\dynamics$, 
-prediction algorithms must compute updates empirically using data gathered from interaction with the environment. Such empirical approaches belong to the broader class of model-free methods, which constitute the focus of this work.
+The task of accurately estimating $v_\pi$ and $q_\pi$ for a given fixed policy is known as the prediction problem. Algorithms for prediction typically perform iterative policy evaluation, a process where $\vparam$ or $\qparam$ is incrementally updated to approach the true state or state-action values, respectively. If $\dynamics$ is known, these updates can be computed iteratively via dynamic programming by turning the system of Bellman equations in \todo{ref bellman eq from above} into a contraction mapping. When $\dynamics$ is unknown, prediction algorithms must compute updates empirically using data gathered from interaction with the environment. Such empirical approaches belong to the broader class of model-free methods, which constitute the focus of this work.
 
 \subsection{Monte Carlo Methods}
 % Monte Carlo
@@ -331,7 +329,7 @@ The Q-learning algorithm \tocite{W and Dayan} is a ubiquitous value-based method
 %is actually a special case of the Expected SARSA method \cite{sutton1998introduction}, which 
 exploits the fact that the envrionments transition dynamics are independent of the policy being evaluated, and therefore given a state-action pair, the next state and reward can be used to construct an estimate of $\qfn$ for any policy by simply replacing value of the next action in \tocite{equation for td update} with a max over the action values in the next state, implicitly implementing alternating individual steps of policy evaluation with the TD(0) update for action values and greedy policy improvement. %todo this sentence is a run on and needs to be made into two clear and concise sentences
 % todo: pseudocode for Q learning, consistent with the formatting for the prediciton algos pseudocode 
-As the policy used for gathering data differs from the greedy policy being evaluated, Q-learning is classified as an \textit{off-policy} learning algorithm. It allows for the sustained exploration needed for theoretically sound convergence in the tabular setting, while maintaining the ability to learn $\pi^*$ via greedy policy updates. A key benefit of off-policy learning that cannot be underemphasized is the ability to learn from experience generated by any policy, which proves essential to its use with deep neural networks discussed in \todo{DQN section reference}. 
+As the policy used for gathering data differs from the greedy policy being evaluated, Q-learning is classified as an \textit{off-policy} learning algorithm. It allows for the sustained exploration needed for theoretically sound convergence in the tabular setting, while maintaining the ability to learn $\pi^*$ via greedy policy updates. A key benefit of off-policy learning that cannot be underemphasized is the ability to learn from experience generated by any policy, which proves essential to its use with deep neural networks (DNNs) discussed in \todo{DQN section reference}. 
 %A minor disadvantage of this approach is the mismatch between the state visitation distributions for the greedy policy and the behavior policy  % todo: use my \stateDistribution notation instead of writing it out
 %can result in selecting actions that may be optimal for the target policy but are actually suboptimal for the soft behvaior policy, resulting in poor performance during training but having no affect on the quality of the target policy. \tocite{cliff walking if that was in a paper or just the book}. 
 
@@ -345,9 +343,10 @@ As the policy used for gathering data differs from the greedy policy being evalu
 % Continuous actions (look at s and b)
 
 \section{Deep Reinforcement Learning}
+Deep reinforcement learning refers to a particular instance of RL with non-linear FA where the approximators used learn $\vparam$, $\qparam$, and/or $\pi_\theta$ are DNNs. This setting has become the dominant paradigm in modern RL research due to the strong empriical performance of these extremely low-bias, non-linear FAs when large amounts (typically on the order of millions) of samples are available for training \tocite{citation}. By removing the need for task-specific, human-designed features, deep RL has potential to autonomously solve new problems without the need for any human intervention. Despite their apparent complexity, the majority of deep RL methods are directly derived from the foundational algorithms introduced in the context of the standard tabular and FA settings above. In fact, any of the methods from the previous sections can utilize DNNs for nonlinear FA without modification. However, RL algorithms typically suffer from significant instabilities resulting in poor performance when naively combined with deep learning methods \tocite{citation}. Many Deep RL algorithms can therefore be thought of as instances of standard RL algorithms paired with algorithmic tools to stabilize the learning process. This includes the two algorithms examined in this section: Deep Q-Learning and Proximal Policy Optimization.
 
 \subsection{Deep Q-Learning} 
-Deep Q-Learning (DQN) \tocite{dqn} is a seminal deep RL algorithm that was introduced to stabalize Q-learning when paired with modern deep neural networks for function approximation. The algorithm addresses two significant issues that arise from naively using a neural network for function approxmiation in \tocite{q learning algo pseudocode above}. 
+Deep Q-Learning (DQN) \tocite{dqn} is a seminal deep RL algorithm that was introduced to stabalize Q-learning when paired with modern DNNs for function approximation. The algorithm addresses two significant issues that arise from naively using a neural network for function approxmiation in \tocite{q learning algo pseudocode above}. 
 
 The first issue is the deadly triad \cite{sutton1998introduction} of bootstrapping, off-policy learning, and function approximation, which has been proven to cause value estimates to diverge in some MDPs even in the linear case \tocite{counterexample}, and has been shown empirically to cause significant instability with neural networks. %todo consice description of deadly triad mechanism
 To address this, DQN periodically freezes and stores a copy of the action-value network parameters \qparams as a seperate target network \qparams', which is used in place of the value network in the update target until the next refresh. This increases the number of steps of policy evaluation per policy improvement step, greatly moderating the rate of any potential divergence caused by the triad. 
@@ -357,14 +356,13 @@ This technique highlights the importance of off-policy learning, as control algo
 Pseudocode for the DQN algorithm is given below:
 % todo: dqn pseudocode, closely matching the Q-learning code but with target net and replay. 
 
-These two mechanisms effectively reduce the Q-learning algorithm to solving a sequence of approximately i.i.d supervised regression problems, where the performance of deep neural networks is much more robust. 
+These two mechanisms effectively reduce the Q-learning algorithm to solving a sequence of approximately i.i.d supervised regression problems, where the performance of DNNs is much more robust. 
 \subsection{Proximal Policy Optimization}
 
 
 
 \section{Line Search Methods}
-We introduce a new algorithm that is more effective for RL, that uses a parallel search to avoid sequential backtracking and common initialization heuristics\cite{vaswani2019painless,galli2023monotone}, and allows for use of a more effective selection criterion based on the step size that minimizes the objective the most.
-
+Having defined the deep RL algorithms that , we now turn to line search methods, the first of the two globalization strategies for adaptive step size examined in this work. 
 
 Consider the stochastic minimization problem  $\xstar = \argmin_{x \in
 \mathbb{R}^n} f_k(x)$, where $f_k$ is an unbiased stochastic estimate of an objective function $f$. Iterative algorithms typically update the current estimate $\xAt{k}$ by choosing an
@@ -401,6 +399,8 @@ where again $c \in (0, 1)$ and $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$. 
 when $f_k(\xAt{k}) > \tilde C_k$, the term $C_k = f_k(\xAt{k})$ subsumes the weight for the past function values.
 
 \subsection{Parallel Argmin Line Search (PALS)} \label{sec: pals}
+
+We introduce a new algorithm that is more effective for RL, that uses a parallel search to avoid sequential backtracking and common initialization heuristics\cite{vaswani2019painless,galli2023monotone}, and allows for use of a more effective selection criterion based on the step size that minimizes the objective the most.
 
 We propose a framework for integrating line search techniques into RL to adaptively determine step sizes for both value function approximation and policy optimization.
 As discussed, a primary hurdle to adopting line searches is the sequential backtracking procedure.
