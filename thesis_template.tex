@@ -362,20 +362,21 @@ These two mechanisms effectively reduce the Q-learning algorithm to solving a se
 
 
 \section{Line Search Methods}
-Having defined the deep RL algorithms that , we now turn to line search methods, the first of the two globalization strategies for adaptive step size examined in this work. 
+% Todo: make sure that I am not missing anything in this section, since I am much less familiar with optimization than RL. Go back and check nocedal and wright numerical optimization LS and TR chapters. Double check there are not critical omissions or mistakes. Also note where this is being too concise and could be expanded for clarity's sake. 
+Having introduced the % todo: lead in the smoothly transitions from deep rl to here
+We now turn to line search methods, the first of the two globalization strategies for adaptive step size examined in this work. 
 
-Consider the stochastic minimization problem  $\xstar = \argmin_{x \in
-\mathbb{R}^n} f_k(x)$, where $f_k$ is an unbiased stochastic estimate of an objective function $f$. Iterative algorithms typically update the current estimate $\xAt{k}$ by choosing an
-update direction $\updateAt{k}$ and taking a step in this direction, setting $\xAt{k+1} = \xAt{k} + \stepSizeAt{k} \updateAt{k}$
-where $\stepSizeAt{k} > 0$ is a scalar step size. While $\stepSizeAt{k}$ is often fixed or decayed, recent research has pivoted toward adaptive step size selection to improve convergence and robustness.
+We first define the stochastic minimization problem  $\xstar = \argmin_{x \in \mathbb{R}^n} f_k(x)$, where $f_k$ is an unbiased stochastic estimate of an objective function $f$. Iterative algorithms typically update the current estimate $\xAt{k}$ by selecting an update direction $\updateAt{k}$ and taking a step in this direction, such that $\xAt{k+1} = \xAt{k} + \stepSizeAt{k} \updateAt{k}$ where $\stepSizeAt{k} > 0$ is a scalar step size. While $\stepSizeAt{k}$ is often fixed or decayed, recent work has moved toward adaptive step size selection to improve convergence and robustness \tocite{citation}. 
 
-A prominent class of adaptive methods is line search \cite{nocedal2006numerical,armijo1966minimization,vaswani2019painless,vaswani2025armijo,galli2023monotone,fox2024nonmonotone,fox2024glocal}. These methods search for an optimal $\stepSizeAt{k}$ along the direction $\updateAt{k}$. In particular, the stochastic Armijo line
-search selects an $\stepSizeAt{k}$ that satisfies the \textit{stochastic Armijo condition} \cite{vaswani2019painless}:
+\subsection{Backtracking Armijo Line Search}
+A prominent class of adaptive methods is line search \cite{nocedal2006numerical,armijo1966minimization,vaswani2019painless,vaswani2025armijo,galli2023monotone,fox2024nonmonotone,fox2024glocal}. These methods search for an optimal $\stepSizeAt{k}$ along $\updateAt{k}$. % todo: think there should be a more specific or formal way of introducing this
+% todo: do i need to introduce backtracking as a special kind of LS here?
+The stochastic Armijo line search selects an $\stepSizeAt{k}$ that satisfies the \textit{stochastic Armijo condition} \cite{vaswani2019painless}:
 \begin{equation}
         f_k(\xAt{k} + \stepSizeAt{k} \updateAt{k}) \le f_k(\xAt{k}) + c \stepSizeAt{k} \inner{\nabla f_k(\xAt{k})}{\updateAt{k}},
     \label{eq:armijo_condition}
 \end{equation}
-where $c \in (0, 1)$ is a hyperparameter and $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$. Line searches are flexible, and can easily be layered atop any optimizer that produces an update vector $\updateAt{k}$ that satisfies this property \cite{nocedal2006numerical,vaswani2025armijo,shea2024so}.
+where $c \in (0, 1)$ is a hyperparameter controlling the conservativeness of the condition and $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$, implying that $\updateAt{k}$ must be a descent direction for $f_k$. Line search methods are flexible in that they easily be layered atop any optimizer that produces an update vector $\updateAt{k}$ satisfying this property \cite{nocedal2006numerical,vaswani2025armijo,shea2024so}.
 
 Backtracking is used to get $\stepSizeAt{k}$ by evaluating the sequence $\stepSizeAt{k}^{(i)} = \stepSizeInit \beta^i$ for $i = 0, \dots, B$ where $\stepSize_0 > 0$ is some initial step size. The algorithm sets $\stepSizeAt{k} = \stepSizeAt{k}^{(i)}$ using the smallest $i$ satisfying Equation~\ref{eq:armijo_condition}, typically falling back to $\stepSizeAt{k}^{(B)}$ if no candidate is found. The sequential cost of $B$ backtracking evaluations led to heuristics to optimize the initial guess $\stepSizeInit$. Notably, \cite{vaswani2019painless} proposed to initialize each iteration $k$ of the line search from $\stepSizeAt{k} \delta^{n/b}$, where $\delta > 1$, $n$ is the dataset size, and $b$ is the batch size. \cite{galli2023monotone} suggested using Polyak step sizes for initialization.
 
@@ -398,7 +399,7 @@ Many non-monotone conditions exist; we use one that requires progress over an ex
 where again $c \in (0, 1)$ and $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$. Here, $C_k$ is a bias-corrected exponential moving average of function values, except that
 when $f_k(\xAt{k}) > \tilde C_k$, the term $C_k = f_k(\xAt{k})$ subsumes the weight for the past function values.
 
-\subsection{Parallel Argmin Line Search (PALS)} \label{sec: pals}
+\subsection{Parallel Argmin Line Search} \label{sec: pals}
 
 We introduce a new algorithm that is more effective for RL, that uses a parallel search to avoid sequential backtracking and common initialization heuristics\cite{vaswani2019painless,galli2023monotone}, and allows for use of a more effective selection criterion based on the step size that minimizes the objective the most.
 
