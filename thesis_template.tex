@@ -430,7 +430,7 @@ Some actor-critic methods use the advantage function \tocite{citation}, defined 
 The critic can be updated just as in prediction, using any of the targets for policy evaluation presented in Section~\ref{sec:prediction}. A simple actor-critic algorithm that learns $\vparam$ and uses Equation~\eqref{eq:pg_advantage} to estimate the policy gradient is given in Algorithm~\ref{alg:ac}. Note the TD error $\delta$ serves as an unbiased sample of the advantage $A_\pi(S_t, A_t)$.
 
 \begin{algorithm}[t]
-\caption{One-step Actor-Critic}
+\caption{Actor-Critic with Advantage and TD(0) Target}
 \label{alg:ac}
 \begin{algorithmic}[1]
 \State \textbf{Input:} critic step size $\alpha_{\vparams}$, actor step size $\alpha_\theta$, initial critic $\vparams$, initial actor $\theta$
@@ -439,7 +439,7 @@ The critic can be updated just as in prediction, using any of the targets for po
     \While{$S$ is not terminal}
         \State $A \sim \pi_\theta(\cdot \mid S)$
         \State Take action $A$, observe reward $R$ and next state $S'$
-        \State $\delta \gets R + \discount \vparam(S') - \vparam(S)$ \Comment{TD error, an estimate of $A_\pi(S, A)$; $\vparam(S') = 0$ if $S'$ terminal}
+        \State $\delta \gets R + \discount \vparam(S') - \vparam(S)$ \Comment{TD error estimates $A_\pi(S, A)$; $\vparam(S') = 0$ if $S'$ terminal}
         \State $\vparams \gets \vparams + \alpha_{\vparams}\, \delta\, \nabla_{\vparams} \vparam(S)$
         \State $\theta \gets \theta + \alpha_\theta\, \delta\, \nabla_\theta \log \pi_\theta(A \mid S)$
         \State $S \gets S'$
@@ -473,7 +473,7 @@ The second issue is that neural networks are prone to instability when trained o
         \State Sample a minibatch of transitions $(S_j, A_j, R_j, S'_j)$ from $\mathcal{D}$
         \State $y_j \gets R_j + \discount \max_{a} \q_{\qparams'}(S'_j, a)$ \Comment{$y_j = R_j$ if $S'_j$ terminal}
         \State $\qparams \gets \qparams - \alpha \nabla_{\qparams} \frac{1}{|\text{batch}|}\sum_j \left( y_j - \qparam(S_j, A_j) \right)^2$
-        \State Every $C$ steps, set $\qparams' \gets \qparams$
+        \State Every $C$ steps, set $\qparams' \gets \qparams$ % todo: this should just be a condition of if the timestep mod c is zero with a timeestep counter. 
         \State $S \gets S'$
     \EndWhile
 \EndFor
@@ -499,7 +499,7 @@ PPO employs many additional and less novel algorithmic tools for stabilizing tra
 \caption{Proximal Policy Optimization (PPO)}
 \label{alg:ppo}
 \begin{algorithmic}[1]
-\State \textbf{Input:} clip parameter $\epsilon$, number of epochs $K$, initial actor $\theta$, initial critic $\vparams$
+\State \textbf{Input:} clip parameter $\epsilon$, number of epochs $K$, initial actor weights $\theta$, initial critic weights $\vparams$
 \For{each iteration}
     \State Collect a batch of transitions by running $\pi_\theta$ for $T$ steps
     \State Compute $\lambda$-return targets $G_t^\lambda$ and advantage estimates $\hat{A}_t$ for each step
@@ -520,31 +520,31 @@ PPO employs many additional and less novel algorithmic tools for stabilizing tra
 \section{Adaptive Step Size Methods}
 We now turn to the two classes of adaptive step size methods examined in this work: line search and trust region. These two approaches are known as globalization strategies, as they were designed to ensure fast convergence to a local minimum from any starting point for deterministic non-convex optimization, a setting where classical optimizers such as Newton's method can diverge when applied with a fixed step size \todo{citation}. 
 
-We first define the stochastic minimization setting. Given a dataset $\mathcal{D} = \{z_1, \dots, z_n\}$ of $n$ examples, the objective is the average loss $f(x) = \frac{1}{n}\sum_{i=1}^{n} \ell(x, z_i)$, and the goal is to find $\xstar = \argmin_{x \in \RR^d} f(x)$. At each iteration $k$ the algorithm only accesses $f_k$, an unbiased stochastic estimate of $f$ computed from a minibatch of $b \le n$ examples drawn from $\mathcal{D}$.
+We first define the stochastic optimization setting. Given a dataset $\mathcal{D} = \{z_1, \dots, z_n\}$ of $n$ samples, the objective is the average loss $f(x) = \frac{1}{n}\sum_{i=1}^{n} \ell(x, z_i)$, and the goal is to find $\xstar = \argmin_{x \in \RR^d} f(x)$. At each iteration $k$ the algorithm only accesses $f_k$, an unbiased stochastic estimate of $f$ computed from a minibatch of $b \le n$ examples drawn from $\mathcal{D}$.
 Iterative algorithms typically update the current estimate $\xAt{k}$ by selecting an update direction $\updateAt{k}$ and taking a step in this direction, such that $\xAt{k+1} = \xAt{k} + \stepSizeAt{k} \updateAt{k}$ where $\stepSizeAt{k} > 0$ is a scalar step size. While $\stepSizeAt{k}$ is often fixed or decayed, recent work has moved toward adaptive step size selection to improve convergence and robustness \tocite{citation}. 
 
 \subsection{Line Search Methods}
-Line search is a foundational approach for adaptive step size in the deterministic setting and was recently proven to converge in stochastic optimization \cite{vaswani2019painless} under an interpolation condition,
+Line search is a foundational approach for adaptive step size in the deterministic setting and has also been proven to converge in stochastic optimization \cite{vaswani2019painless} under an interpolation condition,
 \begin{equation} \ 
     \nabla f(\xstar) = 0 \implies \nabla f_k(\xstar) = 0 \quad \text{for all } k,
     \label{eq:interpolation}
 \end{equation}
-meaning that any minimizer of the full objective $f$ is also a minimizer of every stochastic estimate $f_k$. Neural networks are often overparameterized, a regime in which this condition approximately holds. This finding motivated the use of line search in modern deep learning, with strong empirical success \cite{vaswani2025armijo, galli2023monotone, fox2024nonmonotone, fox2024glocal}.
+meaning that any minima of the full objective $f$ is also a minima of every stochastic estimate $f_k$. Neural networks are often overparameterized, a regime in which this condition approximately holds. This result motivated the use of line search in modern deep learning, and has been followed by strong empirical success \cite{vaswani2025armijo, galli2023monotone, fox2024nonmonotone, fox2024glocal}.
 \todo{Double check to make sure these are all stochastic setting}.
 
-Line search methods seek a step size that approximately minimizes the objective along the update direction, $\stepSizeAt{k} \approx \argmin_{\eta > 0} f_k(\xAt{k} + \eta \updateAt{k})$. Solving this exactly is usually impractical, so in practice one uses inexact schemes such as backtracking, which start from an initial step size and shrink it until a sufficient-decrease condition is met. The backtracking Armijo line search selects the largest step size $\stepSizeAt{k}$ that satisfies the \textit{stochastic Armijo condition} \cite{vaswani2019painless},
+Line search methods search for a step size that approximately minimizes the objective along the update direction, $\stepSizeAt{k} \approx \argmin_{\eta > 0} f_k(\xAt{k} + \eta \updateAt{k})$. Solving this exactly is typically impractical, so in practice backtracking is often used. The stochastic Armijo line search selects the largest step size $\stepSizeAt{k}$ that satisfies the stochastic Armijo condition \cite{vaswani2019painless},
 \begin{equation}
         f_k(\xAt{k} + \stepSizeAt{k} \updateAt{k}) \le f_k(\xAt{k}) + c \stepSizeAt{k} \inner{\nabla f_k(\xAt{k})}{\updateAt{k}},
     \label{eq:armijo_condition}
 \end{equation}
-where $c \in (0, 1)$ is a hyperparameter and $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$, implying that $\updateAt{k}$ must be a descent direction for $f_k$. $c$ was originally introduced for the full-batch setting to enforce a sufficient decrease, requiring that the achieved reduction in $f_k$ be at least a fraction $c$ of the reduction predicted by the first-order model \cite{nocedal2006numerical}. In the stochastic setting it serves the dual purpose of controlling the conservativeness of the condition. Line search methods are flexible in that they can easily be layered atop any optimizer that produces an update vector $\updateAt{k}$ satisfying this descent property \cite{nocedal2006numerical,vaswani2025armijo,shea2024so}.
+where $c \in (0, 1)$ is a hyperparameter and $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$, implying that $\updateAt{k}$ must be a descent direction for $f_k$. In the full batch setting $c$ was typically set to a small value such as $1e-4$ to ensure convergence. However, in the stochastic setting, $c$ serves the additional purpose of controlling the conservativeness of the condition, and much larger values in $[0.1, 0.7]$ are common \tocite{citation}. Line search methods are flexible in that they can easily be layered atop any optimizer that produces an update vector $\updateAt{k}$ satisfying this descent property \cite{nocedal2006numerical,vaswani2025armijo,shea2024so}.
 
-A backtracking procedure is used to find $\stepSizeAt{k}$ by evaluating an exponentially decaying sequence of candidate step sizes $\stepSizeAt{k}^{(i)} = \stepSizeInit \beta^i$ for $i = 0, \dots, B$, where $\stepSizeInit > 0$ is some initial step size and $\beta \in (0, 1)$ is a decay factor. The algorithm sets $\stepSizeAt{k} = \stepSizeAt{k}^{(i)}$ using the smallest $i$ satisfying Equation~\eqref{eq:armijo_condition}, typically falling back to $\stepSizeAt{k}^{(B)}$ if no candidate is accepted. The linear complexity of $B$ backtracking evaluations has motivated heuristics to optimize the starting point $\stepSizeInit$. One widely used reset heuristic \cite{vaswani2019painless} initializes each iteration $k$ of the line search from $\stepSizeAt{k} \delta^{n/b}$, where $\delta > 1$, $n$ is the dataset size, and $b$ is the batch size.
+A backtracking procedure is used to find $\stepSizeAt{k}$ by evaluating an exponentially decaying sequence of candidate step sizes $\stepSizeAt{k}^{(i)} = \stepSizeInit \beta^i$ for $i = 0, \dots, B$, where $\stepSizeInit > 0$ is some initial step size and $\beta \in (0, 1)$ is a decay factor. The algorithm sets $\stepSizeAt{k} = \stepSizeAt{k}^{(i)}$ using the smallest $i$ satisfying Equation~\eqref{eq:armijo_condition}, typically falling back to $\stepSizeAt{k}^{(B)}$ if no candidate is accepted. The linear complexity of $B$ backtracking evaluations has motivated heuristics to optimize the starting point $\stepSizeInit$. A popular reset heuristic \cite{vaswani2019painless} initializes each iteration $k$ of the line search from $\stepSizeAt{k} \delta^{n/b}$, where $\delta > 1$, $n$ is the dataset size, and $b$ is the batch size.
 
 Despite its theoretical guarantees, the Armijo condition requires a monotonic decrease that can be restrictive, resulting in minuscule step sizes \cite{nocedal2006numerical}.
 To mitigate this, non-monotone line searches relax the requirement of a strict decrease at every iteration and instead simply require that progress be made overall
 \cite{zhang2004nonmonotone,galli2023monotone,fox2024nonmonotone,grippo1986nonmonotone,dai2002nonmonotone,huynh1993nonmonotone,ernesto2000nonmonotone}. This is typically accomplished by increasing the $f(\xAt{k})$ term in
-Equation\todo{ref}. Non-monotone line searches often choose larger step sizes than Armijo line searches, potentially leading to flatter, more robust minima \cite{fox2024nonmonotone}.
+Equation \ref{eq:adam_armijo_condition}. Non-monotone line searches often choose larger step sizes than Armijo line searches, potentially leading to flatter, more robust minima \cite{fox2024nonmonotone}.
 While many non-monotone conditions exist, in this work we examine one that requires progress over an exponential moving window of iterates \cite{zhang2004nonmonotone,galli2023monotone}:
 \begin{equation}
 	\begin{split}
@@ -560,28 +560,26 @@ where again $c \in (0, 1)$, $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$, and
 
 \subsection{Trust Region Methods}
 % TODO: IMPORTANT! Heavily influenced by N and W. Make sure that it's not too similar!!
-Trust region methods offer an alternative approach to globalization. Rather than fixing an update direction and searching for a step size along it, both the step size and the direction are chosen together. To accomplish this, they construct a local model of the objective and solve it within a bounded region around the current iterate. Like line search, trust region methods provide global convergence guarantees in the deterministic setting \cite{nocedal2006numerical}. Many variants have been examined in the stochastic setting \tocite{stochastic trust region refs}, and trust region was recently shown to converge under the same interpolation condition given in \ref{eq:interpolation} \tocite{new TR paper}. \todo{check with Chen that my understanding of this is correct}. 
+Trust region methods offer an alternative approach to globalization. Rather than fixing an update direction and searching for a step size along it, both the step size and the direction are chosen together. To accomplish this, they construct a local model of the objective and solve it within a bounded region around the current iterate. Like line search, trust region methods provide global convergence guarantees in the deterministic setting \cite{nocedal2006numerical}. Many variants of trust region have been examined in the stochastic setting \tocite{stochastic trust region refs}, and it was recently shown to converge under the same interpolation condition given in \ref{eq:interpolation} \tocite{new TR paper}. \todo{check with Chen that my understanding of this result is correct}. 
 
-At iteration $k$, trust region methods  objective is approximated by a quadratic model
+At iteration $k$, the trust region methods approximate the objective with quadratic model
 \begin{equation}
     m_k(p) = f_k(\xAt{k}) + \inner{\nabla f_k(\xAt{k})}{p} + \tfrac{1}{2} p^\top B_k p,
     \label{eq:tr_model}
 \end{equation}
-where $B_k$ is a symmetric matrix and $p$ is a candidate step. The next step is obtained by minimizing this model within a ball of radius $\Delta_k > 0$, referred to the trust region radius.
+where $B_k$ is a symmetric matrix and $p$ is a candidate step. The next step is obtained by minimizing this model within a ball of radius $\Delta_k > 0$, referred to as the trust region radius.
 \begin{equation}
     p_k = \argmin_{p \in \RR^d} m_k(p) \quad \text{subject to} \quad \norm{p} \le \Delta_k.
     \label{eq:tr_subproblem}
 \end{equation}
-Setting $B_k$ to the Hessian yields the trust region Newton method, while $B_k = 0$ \cite{nocedal2006numerical} produces a first-order model. 
-
-On each update, trust region methods adapt the radius based on how accurately the model predicted the actual observed change in the objective. Given a step $p_k$, the following quantity, which we refer to as the \textit{reduction ratio}, measures the agreement:
+Setting $B_k$ to the Hessian yields the trust region Newton method, while $B_k = 0$ \cite{nocedal2006numerical} produces a first-order model. On each update, trust region methods adapt the radius based on how accurately the model predicted the actual observed change in the objective. Given a step $p_k$, the following quantity, which we refer to as the \textit{reduction ratio}, measures the agreement:
 \begin{equation}
     \rho_k = \frac{f_k(\xAt{k}) - f_k(\xAt{k} + p_k)}{m_k(0) - m_k(p_k)},
     \label{eq:tr_ratio}
 \end{equation}
-where the numerator is the actual reduction and denominator is the predicted reduction. Because $p_k$ minimizes the model over a region containing $p = 0$, the predicted reduction is always nonnegative. When $\rho_k$ is close to 1, the model is deemed reliable and therefore the radius is expanded, while when $\rho_k$ is small or negative, the step is rejected and the radius is shrunk. Otherwise, the radius is left unchanged \cite{nocedal2006numerical}.
+where the numerator is the actual reduction in the objective and denominator is the predicted reduction. Because $p_k$ minimizes the model over a region containing $p = 0$, the predicted reduction is always nonnegative. When $\rho_k$ is close to 1, the model is deemed reliable and therefore the radius is expanded, while when $\rho_k$ is small or negative, the step is rejected and the radius is shrunk. Otherwise, the radius is left unchanged \cite{nocedal2006numerical}.
 
-Exactly solving the subproblem in Equation~\eqref{eq:tr_subproblem} is expensive, and as with line search an exact solution is not required for convergence. It suffices to find an approximate solution that lies within the trust region and achieves a sufficient reduction in the model \cite{nocedal2006numerical}. This reduction is quantified relative to the Cauchy point $p_k^C$, the minimizer of the model along the steepest descent direction subject to the trust region constraint. The Cauchy point has the closed form
+Exactly solving the subproblem in Equation~\eqref{eq:tr_subproblem} is expensive, and as with line search an exact solution is not required for convergence \cite{nocedal2006numerical}. It suffices to find an approximate solution that lies within the trust region and achieves a sufficient reduction in the model \cite{nocedal2006numerical}. This reduction is quantified relative to the Cauchy point $p_k^C$, the minimizer of the model along the steepest descent direction subject to the trust region constraint. The Cauchy point has the closed form
 \begin{equation}
     p_k^C = -\tau_k \frac{\Delta_k}{\norm{\nabla f_k(\xAt{k})}} \nabla f_k(\xAt{k}),
     \label{eq:cauchy_point}
@@ -595,7 +593,7 @@ where
     \end{cases}
     \label{eq:cauchy_tau}
 \end{equation}
-The Cauchy point has a key benefit of being relatively inexpensive to compute, as it does not require any matrix factorization. It also serves as a framework for combining trust region methods with modern first-order optimizers. When $B_k = 0$ the model is linear and $\tau_k = 1$, so the Cauchy point reduces to the full steepest descent step scaled to the trust region boundary, $p_k^C = -\Delta_k \nabla f_k(\xAt{k}) / \norm{\nabla f_k(\xAt{k})}$. Replacing the gradient with any descent direction $\updateAt{k}$ yields the step $\Delta_k \updateAt{k} / \norm{\updateAt{k}}$.
+The Cauchy point has a key benefit of being relatively inexpensive to compute, as it does not require any matrix factorization. It also serves as a framework for combining trust region methods with modern first-order optimizers. When $B_k = 0$ the model is linear and $\tau_k = 1$, so the Cauchy point reduces to the full steepest-descent step scaled to the trust region boundary, $p_k^C = -\Delta_k \nabla f_k(\xAt{k}) / \norm{\nabla f_k(\xAt{k})}$. Replacing the gradient with any descent direction $\updateAt{k}$ yields the step $\Delta_k \updateAt{k} / \norm{\updateAt{k}}$.
 
 
 \chapter{Parallel Argmin Line Search} \label{sec: pals}
