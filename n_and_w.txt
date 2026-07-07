@@ -1,0 +1,271 @@
+Textbook:
+
+Line search methods and trust-region methods both generate steps with the help of a
+quadratic model of the objective function, but they use this model in different ways. Line
+search methods use it to generate a search direction, and then focus their efforts on finding
+a suitable step length α along this direction. Trust-region methods define a region around
+the current iterate within which they trust the model to be an adequate representation of the
+objective function, and then choose the step to be the approximate minimizer of the model
+in this trust region. In effect, they choose the direction and length of the step simultaneously.
+If a step is not acceptable, they reduce the size of the region and find a new minimizer. In
+general, the step direction changes whenever the size of the trust region is altered.
+The size of the trust region is critical to the effectiveness of each step. If the region is
+too small, the algorithm misses an opportunity to take a substantial step that will move it
+much closer to the minimizer of the objective function. If too large, the minimizer of the
+model may be far from the minimizer of the objective function in the region, so we may have
+to reduce the size of the region and try again. In practical algorithms, we choose the size of
+the region according to the performance of the algorithm during previous iterations. If the
+model is generally reliable, producing good steps and accurately predicting the behavior of
+the objective function along these steps, the size of the trust region is steadily increased toallow longer, more ambitious, steps to be taken. On the other hand, a failed step indicates
+that our model is an inadequate representation of the objective function over the current
+trust region, so we reduce the size of the region and try again.
+Figure 4.1 illustrates the trust-region approach on a function f of two variables in
+which the current point lies at one end of a curved valley while the minimizer x∗ lies at the
+other end. The quadratic model function mk, whose elliptical contours are shown as dashed
+lines, is based on function and derivative information at xk and possibly also on information
+accumulated from previous iterations and steps. A line search method based on this model
+searches along the step to the minimizer of mk (shown), but this direction allows only a
+small reduction in f even if an optimal step is taken. A trust-region method, on the other
+hand, steps to the minimizer of mk within the dotted circle, which yields a more significant
+reduction in f and a better step.
+We will assume that the first two terms of the quadratic model functions mk at each
+iterate xk are identical to the first two terms of the Taylor-series expansion of f around xk.
+Specifically, we have
+mk(p)  fk +∇f T
+k p + 1
+2pT Bkp,
+where fk f (xk), ∇fk ∇f (xk), and Bk is some symmetric matrix. Since by (2.6) we
+have
+f (xk +p) fk +∇f T
+k p +1
+2 pT ∇2f (xk +tp)p, (4.2)
+for some scalar t ∈(0, 1), and since mk(p) fk +∇f T
+k p +O ∥p∥2 , the difference
+between mk(p) and f (xk +p) is O ∥p∥2 , so the approximation error is small when p is
+small.
+When Bk is equal to the true Hessian ∇2f (xk), the model function actually agrees
+with the Taylor series to three terms. The approximation error is O ∥p∥3 in this case,
+so this model is especially accurate when ∥p∥is small. The algorithm based on setting
+Bk ∇2f (xk) is called the trust-region Newton method, and will be discussed further in
+Chapter 6. In the current chapter, we emphasize the generality of the trust-region approach
+by assuming little about Bk except symmetry and uniform boundedness in the index k.
+To obtain each step, we seek a solution of the subproblem
+min
+p∈I Rn
+mk(p) fk +∇f T
+k p +1
+2 pT Bkp s.t. ∥p∥≤ k, (4.3)
+where k > 0 is the trust-region radius. For the moment, we define ∥·∥to be the Euclidean
+norm, so that the solution p∗
+k of (4.3) is the minimizer of mk in the ball of radius k. Thus,
+the trust-region approach requires us to solve a sequence of subproblems (4.3) in which the
+objective function and constraint (which can be written as pT p ≤ 2
+k) are both quadratic.
+When Bk is positive definite and ∥B−1
+k ∇fk∥≤ k, the solution of (4.3) is easy to identify—it
+is simply the unconstrained minimum pB
+k −B−1
+k ∇fk of the quadratic mk(p). In this case,
+we call pB
+k the full step. The solution of (4.3) is not so obvious in other cases, but it can usually
+be found without too much expense. In any case, we need only an approximate solution to
+obtain convergence and good practical behavior.
+OUTLINE OF THE ALGORITHM
+The first issue to arise in defining a trust-region method is the strategy for choosing
+the trust-region radius k at each iteration. We base this choice on the agreement between
+the model function mk and the objective function f at previous iterations. Given a step pk
+we define the ratio
+ρk
+f (xk)−f (xk +pk)
+mk(0)−mk(pk) ; (4.4)
+the numerator is called the actual reduction, and the denominator is the predicted reduction.
+Note that since the step pk is obtained by minimizing the model mk over a region that
+includes the step p 0, the predicted reduction will always be nonnegative. Thus if ρk is
+negative, the new objective value f (xk +pk) is greater than the current value f (xk), so the
+step must be rejected.
+On the other hand, if ρk is close to 1, there is good agreement between the model mk
+and the function f over this step, so it is safe to expand the trust region for the next iteration.
+If ρk is positive but not close to 1, we do not alter the trust region, but if it is close to zero or
+negative, we shrink the trust region. The following algorithm describes the process.
+Algorithm 4.1 (Trust Region).
+Given¯
+> 0, 0 ∈(0,
+¯
+), and η ∈ 0,
+1
+4 :
+for k 0, 1, 2, . . .
+Obtain pk by (approximately) solving (4.3);
+Evaluate ρk from (4.4);
+if ρk < 1
+4
+k+1
+1
+4 ∥pk∥
+else
+if ρk > 3
+4 and ∥pk∥ k
+k+1 min(2 k,
+else
+k+1 k;
+if ρk > η
+xk+1 xk +pk
+else
+xk+1 xk;
+end (for).
+¯
+)
+Here¯
+is an overall bound on the step lengths. Note that the radius is increased only if ∥pk∥
+actually reaches the boundary of the trust region. If the step stays strictly inside the region,
+we infer that the current value of k is not interfering with the progress of the algorithm,
+so we leave its value unchanged for the next iteration.
+To turn Algorithm 4.1 into a practical algorithm, we need to focus on solving (4.3).
+We first describe three strategies for finding approximate solutions, which achieve at least as
+much reduction in mk as the reduction achieved by the so-called Cauchy point. This point is
+simply the minimizer of mk along the steepest descent direction −∇fk, subject to the trust-
+region bound. The first approximate strategy is the dogleg method, which is appropriate when
+the model Hessian Bk is positive definite. The second strategy, known as two-dimensional
+subspace minimization, can be applied when Bk is indefinite, though it requires an estimate
+of the most negative eigenvalue of this matrix. The third strategy, due to Steihaug, is most
+appropriate when Bk is the exact Hessian ∇2f (xk) and when this matrix is large and sparse.
+We also describe a strategy due to Mor´ e and Sorensen that finds a “nearly exact”
+solution of (4.3). This strategy is based on the fact that the solution p satisfies (Bk +λI)p
+−∇fk for some positive value of λ > 0. This strategy seeks the value of λ that corresponds to
+the trust-region radius k and performs additional calculations in the special case in which
+the resulting modified Hessian (Bk +λI) is nonsingular. Details are given below.
+4.1 THE CAUCHY POINT AND RELATED ALGORITHMS
+THE CAUCHY POINT
+As we saw in the previous chapter, line search methods do not require optimal step
+lengths to be globally convergent. In fact, only a crude approximation to the optimal step
+length that satisfies certain loose criteria is needed. A similar situation applies in trust-region
+methods. Although in principle we are seeking the optimal solution of the subproblem (4.3),
+it is enough for global convergence purposes to find an approximate solution pk that lies
+within the trust region and gives a sufficient reduction in the model. The sufficient reduction
+can be quantified in terms of the Cauchy point, which we denote by pC
+k and define in terms
+of the following simple procedure:
+Algorithm 4.2 (Cauchy Point Calculation).
+Find the vector pS
+k that solves a linear version of (4.3), that is,
+pS
+k arg min
+p∈I Rn fk +∇f T
+k p s.t. ∥p∥≤ k; (4.5)
+Calculate the scalar τk > 0 that minimizes mk(τpS
+k) subject to
+satisfying the trust-region bound, that is,
+τk arg min
+τ>0
+mk(τpS
+k) s.t. ∥τpS
+k∥≤ k; (4.6)
+Set pC
+k τkpS
+k.
+In fact, it is easy to write down a closed-form definition of the Cauchy point. The solution
+of (4.5) is simply
+pS
+k −
+k
+∥∇fk∥
+∇fk.
+To obtain τk explicitly, we consider the cases of ∇f T
+k Bk∇fk ≤0 and ∇f T
+k Bk∇fk > 0 sepa-
+rately. For the former case, the function mk(τpS
+k) decreases monotonically with τ whenever
+∇fk ̸0, so τk is simply the largest value that satisfies the trust-region bound, namely,
+τk 1. For the case ∇f T
+k Bk∇fk > 0, mk(τpS
+k) is a convex quadratic in τ, so τk is either
+the unconstrained minimizer of this quadratic, ∥∇fk∥3/( k∇f T
+k Bk∇fk), or the boundary
+value 1, whichever comes first. In summary, we have
+pC
+k −τk
+k
+∥∇fk∥
+∇fk, (4.7)
+where
+τk
+1 if ∇f T
+k Bk∇fk ≤0;
+min ∥∇fk∥3/( k∇f T
+k Bk∇fk), 1 otherwise.
+(4.8)
+Figure 4.2 illustrates the Cauchy point for a subproblem in which Bk is positive definite.
+In this example, pC
+k lies strictly inside the trust region.
+The Cauchy step pC
+k is inexpensive to calculate—no matrix factorizations are
+required—and is of crucial importance in deciding if an approximate solution of the
+trust-region subproblem is acceptable. Specifically, a trust-region method will be globally
+convergent if its steps pk attain a sufficient reduction in mk; that is, they give a reduction in
+the model mk that is at least some fixed multiple of the decrease attained by the Cauchy step
+at each iteration.
+
+
+Additonal sources:
+
+
+Complexity and global rates of trust-region methods based on
+probabilistic models
+S. Gratton∗ C. W. Royer† L. N. Vicente‡ Z. Zhang§
+February 16, 2017
+Abstract
+Trust-region algorithms have been proved to globally converge with probability one when
+the accuracy of the trust-region models is imposed with a certain probability conditioning
+on the iteration history. In this paper, we study their complexity, providing global rates and
+worst case complexity bounds on the number of iterations (with overwhelmingly high probability), for both first and second order measures of optimality. Such results are essentially
+the same as the ones known for trust-region methods based on deterministic models. The
+derivation of the global rates and worst case complexity bounds follows closely from a study
+of direct-search methods based on the companion notion of probabilistic descent.
+
+
+Convergence of trust-region methods based on probabilistic models
+Afonso S. Bandeira, Katya Scheinberg, Luis Nunes Vicente
+In this paper we consider the use of probabilistic or random models within a classical trust-region framework for optimization of deterministic smooth general nonlinear functions. Our method and setting differs from many stochastic optimization approaches in two principal ways. Firstly, we assume that the value of the function itself can be computed without noise, in other words, that the function is deterministic. Secondly, we use random models of higher quality than those produced by usual stochastic gradient methods. In particular, a first order model based on random approximation of the gradient is required to provide sufficient quality of approximation with probability greater than or equal to 1/2. This is in contrast with stochastic gradient approaches, where the model is assumed to be "correct" only in expectation. As a result of this particular setting, we are able to prove convergence, with probability one, of a trust-region method which is almost identical to the classical method. Hence we show that a standard optimization framework can be used in cases when models are random and may or may not provide good approximations, as long as "good" models are more likely than "bad" models. Our results are based on the use of properties of martingales. Our motivation comes from using random sample sets and interpolation models in derivative-free optimization. However, our framework is general and can be applied with any source of uncertainty in the model. We discuss various applications for our methods in the paper.
+
+Stochastic Optimization Using a Trust-Region Method and Random Models
+Ruobing Chen, Matt Menickelly, Katya Scheinberg
+In this paper, we propose and analyze a trust-region model-based algorithm for solving unconstrained stochastic optimization problems. Our framework utilizes random models of an objective function f(x), obtained from stochastic observations of the function or its gradient. Our method also utilizes estimates of function values to gauge progress that is being made. The convergence analysis relies on requirements that these models and these estimates are sufficiently accurate with sufficiently high, but fixed, probability. Beyond these conditions, no assumptions are made on how these models and estimates are generated. Under these general conditions we show an almost sure global convergence of the method to a first order stationary point. In the second part of the paper, we present examples of generating sufficiently accurate random models under biased or unbiased noise assumptions. Lastly, we present some computational results showing the benefits of the proposed method compared to existing approaches that are based on sample averaging or stochastic gradients.
+
+A Stochastic Trust Region Algorithm Based on Careful Step Normalization
+Frank E. Curtis, Katya Scheinberg, Rui Shi
+An algorithm is proposed for solving stochastic and finite sum minimization problems. Based on a trust region methodology, the algorithm employs normalized steps, at least as long as the norms of the stochastic gradient estimates are within a specified interval. The complete algorithm---which dynamically chooses whether or not to employ normalized steps---is proved to have convergence guarantees that are similar to those possessed by a traditional stochastic gradient approach under various sets of conditions related to the accuracy of the stochastic gradient estimates and choice of stepsize sequence. The results of numerical experiments are presented when the method is employed to minimize convex and nonconvex machine learning test problems. These results illustrate that the method can outperform a traditional stochastic gradient approach.
+
+
+A Fully Stochastic Second-Order Trust Region Method
+Frank E. Curtis, Rui Shi
+A stochastic second-order trust region method is proposed, which can be viewed as a second-order extension of the trust-region-ish (TRish) algorithm proposed by Curtis et al. (INFORMS J. Optim. 1(3) 200-220, 2019). In each iteration, a search direction is computed by (approximately) solving a trust region subproblem defined by stochastic gradient and Hessian estimates. The algorithm has convergence guarantees for stochastic minimization in the fully stochastic regime, meaning that guarantees hold when each stochastic gradient is required merely to be an unbiased estimate of the true gradient with bounded variance and when the stochastic Hessian estimates are bounded uniformly in norm. The algorithm is also equipped with a worst-case complexity guarantee in the nearly deterministic regime, i.e., when the stochastic gradient and Hessian estimates are very close in expectation to the true gradients and Hessians. The results of numerical experiments for training convolutional neural networks for image classification and training a recurrent neural network for time series forecasting are presented. These results show that the algorithm can outperform a stochastic gradient approach and the first-order TRish algorithm in practice.
+
+Trust Region Methods For Nonconvex Stochastic Optimization Beyond Lipschitz Smoothness
+Chenghan Xie, Chenxi Li, Chuwen Zhang, Qi Deng, Dongdong Ge, Yinyu Ye
+In many important machine learning applications, the standard assumption of having a globally Lipschitz continuous gradient may fail to hold. This paper delves into a more general (L0,L1)-smoothness setting, which gains particular significance within the realms of deep neural networks and distributionally robust optimization (DRO). We demonstrate the significant advantage of trust region methods for stochastic nonconvex optimization under such generalized smoothness assumption. We show that first-order trust region methods can recover the normalized and clipped stochastic gradient as special cases and then provide a unified analysis to show their convergence to first-order stationary conditions. Motivated by the important application of DRO, we propose a generalized high-order smoothness condition, under which second-order trust region methods can achieve a complexity of (ϵ−3.5) for convergence to second-order stationary points. By incorporating variance reduction, the second-order trust region method obtains an even better complexity of (ϵ−3), matching the optimal bound for standard smooth optimization. To our best knowledge, this is the first work to show convergence beyond the first-order stationary condition for generalized smooth optimization. Preliminary experiments show that our proposed algorithms perform favorably compared with existing methods.
+
+Stochastic Trust-Region Methods for Over-parameterized Models
+Aike Yanga and Hao Wanga
+aShanghaiTech University, Shanghai, China
+ABSTRACT
+Under interpolation-type assumptions such as the strong growth condition, stochastic optimization methods can attain convergence rates comparable to full-batch
+methods, but their performance—particularly for SGD—remains highly sensitive
+to step-size selection. To address this issue, we propose a unified stochastic trustregion framework that eliminates manual step-size tuning and extends naturally to
+equality-constrained problems. For unconstrained optimization, we develop a firstorder stochastic trust-region algorithm and show that, under the strong growth
+condition, it achieves an iteration and stochastic first-order oracle complexity of
+O(ε
+−2
+log(1/ε)) for finding an ε-stationary point. For equality-constrained problems,
+we introduce a quadratic-penalty-based stochastic trust-region method with penalty
+parameter µ, and establish an iteration and oracle complexity of O(ε
+−4
+log(1/ε)) to
+reach an ε-stationary point of the penalized problem, corresponding to an O(ε)-
+approximate KKT point of the original constrained problem. Numerical experiments on deep neural network training and orthogonally constrained subspace fitting demonstrate that the proposed methods achieve performance comparable to
+well-tuned stochastic baselines, while exhibiting stable optimization behavior and
+effectively handling hard constraints without manual learning-rate scheduling.
+
+
+Trust Region Value Optimization using Kalman Filtering
+Shirli Di-Castro Shashua, Shie Mannor
+Policy evaluation is a key process in reinforcement learning. It assesses a given policy using estimation of the corresponding value function. When using a parameterized function to approximate the value, it is common to optimize the set of parameters by minimizing the sum of squared Bellman Temporal Differences errors. However, this approach ignores certain distributional properties of both the errors and value parameters. Taking these distributions into account in the optimization process can provide useful information on the amount of confidence in value estimation. In this work we propose to optimize the value by minimizing a regularized objective function which forms a trust region over its parameters. We present a novel optimization method, the Kalman Optimization for Value Approximation (KOVA), based on the Extended Kalman Filter. KOVA minimizes the regularized objective function by adopting a Bayesian perspective over both the value parameters and noisy observed returns. This distributional property provides information on parameter uncertainty in addition to value estimates. We provide theoretical results of our approach and analyze the performance of our proposed optimizer on domains with large state and action spaces.
