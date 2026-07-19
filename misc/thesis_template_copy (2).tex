@@ -231,6 +231,7 @@
   \end{enumerate}
   
   \chapter{Background} \label{sec: background}
+  \todo{I think I wrote too much here or some of this could be better served in the intro}
   The reinforcement learning problem is a formalism for an individual interacting with the world with the intention of achieving goals \cite{sutton1998introduction}. In RL, an agent is tasked with maximizing the sum of a reward signal during sequential interaction with an environment. On each of a series of discrete timesteps, the agent observes the state of the environment and takes an action according to its internal decision-making algorithm, which we refer to as a policy. On the next timestep, as a result of the agent's action and the environment dynamics, the environment state changes and the agent receives a scalar reward. The reward may be positive, negative, or neutral (zero), indicating the desirability of the immediate outcome of the action. The agent then takes another action based on the newly observed state, and the cycle repeats. The totality of all these interactions with the environment is referred to as the agent's lifetime. 
   
   Algorithms designed for solving the RL problem can be thought of as intelligent agents in the sense that they make use of newly gathered information about the environment—namely, the experience of taking an action in some state, observing the resulting next state, and receiving a reward—to update their policy so that they may achieve higher reward in the future. Some experiences are highly informative and warrant a large change to the agent's behavior, while other experiences point only to a small adjustment. The primary mechanism for controlling the magnitude of an update is known as the step size $\eta$. Its role is especially important for modern RL algorithms, where a single update based on an experience in a given state can affect behavior across many other states in ways that are difficult to predict. 
@@ -289,7 +290,7 @@
       \label{eq:msve_q}
   \end{equation}
   where $\stateDistribution$ is the on-policy state distribution introduced above.
-  In the tabular setting, if $\dynamics$ and $\rewardFunction$ are known, this objective can be minimized by iteratively solving the system of Bellman equations in \todo{ref bellman eq from above} via dynamic programming \cite{sutton1998introduction}.\todo{should I formally introduce DP? My initial intention was to avoid this for brevity but I ended up going in depth in other areas anyways}. When $\dynamics$ and $\rewardFunction$ are unknown, policy evaluation becomes an online stochastic optimization problem \todo{citation}, as algorithms must construct estimates of $\vfn$ and $\qfn$ from stochastic trajectories and then minimize the MSE. Once the update targets are obtained, any optimization algorithm may be employed to reduce the loss, however all pseudocode presented in the the next two sections uses stochastic gradient descent (SGD). 
+  In the tabular setting, if $\dynamics$ and $\rewardFunction$ are known, this objective can be minimized by iteratively solving the system of Bellman equations in \todo{ref bellman eq from above} via dynamic programming \cite{sutton1998introduction}.\todo{should I formally introduce DP and GPI? My initial intention was to avoid this for brevity but I ended up doing in depth in other areas anyways}. When $\dynamics$ and $\rewardFunction$ are unknown, policy evaluation becomes an online stochastic optimization problem \todo{citation}, as algorithms must construct estimates of $\vfn$ and $\qfn$ from stochastic trajectories and then minimize the MSE. Once the update targets are obtained, any optimization algorithm may be employed to reduce the loss, however all pseudocode presented in the the next two sections uses stochastic gradient descent (SGD). 
   
   \subsection{Monte Carlo Methods}
   The simplest prediction algorithm is Monte Carlo policy evaluation, which uses the full return $G_t$ observed for each state $S_t$ in a trajectory as an update target. By definition, $G_t$ is an unbiased estimate of $\vfn(S_t)$ or $\qfn(S_t, A_t)$. Algorithm~\ref{alg:mc} gives the procedure for the state-value case. One limitation of Monte Carlo evaluation is that it requires a full trajectory of experience to construct the target, delaying all updates to value estimates until the end of an episode. Another key disadvantage is that the variance of the update target is high, which can slow convergence.
@@ -353,8 +354,8 @@
       G_t^\lambda = (1 - \lambda) \sum_{n=1}^{T - t - 1} \lambda^{n-1} G_{t:t+n} + \lambda^{T - t - 1} G_t,
       \label{eq:lambda_return}
   \end{equation}
-  The $\lambda$-return can also be used in place of the TD target in Equation~\eqref{eq:td_update}. Note that after summing the $N$-step returns up to $n = T - t - 1$, all the remaining weight $\lambda^{T-t-1}$ is placed on the full Monte Carlo return $G_t$ for the episode. In practice, the summation can stop at any value of $n$, which is referred to as a truncated $\lambda$-return. Similarly to $N$, tuning $\lambda$ allows for smooth interpolation between TD and Monte Carlo methods, with $\lambda = 0$ and $\lambda = 1$ reducing to the TD(0) and Monte Carlo targets, respectively. In practice, strong performance is typically obtained with an intermediate value $\lambda \in [0.7, 0.95]$ \tocite{citation}, which allows for faster credit assignment than TD(0) while avoiding the high-variance updates of Monte Carlo. \todo{not sure if i need this nod to the backward view given that we only use lambda returns for ppo in the thesis which uses forward view}
-  While it may appear that the $\lambda$-return suffers the same drawback as Monte Carlo in that the agent must wait to compute an update until all $N$-step returns are available at the end of the current episode, there exists an incremental online update rule that produces identical value estimates to the  $\lambda$-return \tocite{citation}. However, algorithms that utilize the incremental form are beyond the scope of this work. 
+  The $\lambda$-return can also be used in place of the TD target in Equation~\eqref{eq:td_update}. Note that after summing the $N$-step returns up to $n = T - t - 1$, all the remaining weight $\lambda^{T-t-1}$ is placed on the full Monte Carlo return $G_t$ for the episode. In practice, the summation can stop at any value of $n$, which is referred to as a truncated $\lambda$-return. Similarly to $N$, tuning $\lambda$ allows for smooth interpolation between the TD and Monte Carlo targets, with $\lambda = 0$ and $\lambda = 1$ reducing to the TD(0) and Monte Carlo targets, respectively. In practice, strong performance is typically obtained with an intermediate value $\lambda \in [0.7, 0.95]$ \tocite{citation}, which allows for faster credit assignment than TD(0) while avoiding the high-variance updates of Monte Carlo methods. \todo{not sure if i need this nod to the backward view given that we only use lambda returns for ppo in the thesis which uses forward view}
+  While it may appear that the $\lambda$-return suffers the same drawback as Monte Carlo methods in that the agent must wait to compute an update until all $N$-step returns are available at the end of the current episode, there exists an incremental online update rule that produces identical value estimates to the  $\lambda$-return \tocite{citation}. However, algorithms that utilize the incremental form are beyond the scope of this work. 
   
   \section{Control Algorithms}
   While prediction algorithms are intrinsically useful for analyzing fixed policies, their true utility is realized in the context of control. We now examine the full RL control problem, where the agent is tasked with discovering an optimal policy. 
@@ -462,11 +463,12 @@
   \subsection{Deep Q-Learning} \label{subsec:dqn}
   Deep Q-Learning (DQN) \tocite{dqn} is a seminal deep RL algorithm that was introduced to stabilize Q-learning when paired with modern DNNs for function approximation. The algorithm addresses two significant issues that arise from naively using a neural network for function approximation in Algorithm~\ref{alg:qlearning}. 
   
-  The first issue is the deadly triad \cite{sutton1998introduction} of bootstrapping, off-policy learning, and function approximation, which has been shown to be susceptible to divergent value estimates even with linear FA \tocite{counterexample}. Under function approximation, an update to $\qparam(s_t, a_t)$ with positive TD error can also increase $\max_a \qparam(s_{t+1}, a)$. Due to bootstrapping, this inflated next-state value feeds back into subsequent updates, creating a vicious cycle. Because Q-learning off-policy, the behavior policy distribution can fail to sufficiently sample and update $\max_a \qparam(s_{t+1}, a)$ to correct the overestimation. To address this, DQN periodically freezes and stores a copy of the action-value network parameters $\qparams$ as a separate target network $\qparams'$, which is used in place of the action-value network in the update target until the next refresh. This increases the number of steps of policy evaluation per policy improvement step, moderating the rate of potential divergence. 
+  The first issue is the deadly triad \cite{sutton1998introduction} of bootstrapping, off-policy learning, and function approximation, which has been shown to be susceptible to divergent value estimates even with linear FA \tocite{counterexample}. Becuase the value of the next state 
+  To address this, DQN periodically freezes and stores a copy of the action-value network parameters $\qparams$ as a separate target network $\qparams'$, which is used in place of the action-value network in the update target until the next refresh. This increases the number of steps of policy evaluation per policy improvement step, greatly moderating the rate of potential divergence. 
   
   The second issue is that neural networks are prone to instability when trained on data that is not independent and identically distributed (i.i.d) \tocite{citation}. Individual transitions collected during sequential interaction with an MDP are temporally correlated, violating the independence assumption. Furthermore, the data distribution shifts over the course of each episode due to both policy updates and state transitions from $\dynamics$, violating the identically distributed assumption. This is addressed through a mechanism known as experience replay \tocite{dqn}. The algorithm maintains a large recency buffer of past transitions and performs each update on a batch sampled randomly from this buffer. Random sampling breaks the temporal correlation between transitions and facilitates a pseudo-stationary data distribution that tracks $\stateDistribution$. This technique highlights the importance of off-policy learning. Control algorithms that can only construct updates from data gathered under the current policy, known as \textit{on-policy} methods, are generally not compatible with experience replay. 
-
-  These two mechanisms effectively reduce the Q-learning algorithm to solving a sequence of approximately i.i.d supervised regression problems, where the performance of DNNs is much more robust. The DQN algorithm is given in Algorithm~\ref{alg:dqn}. As deep RL methods are rarely trained with plain SGD, instead opting for adaptive methods like Adam \cite{kingma2015adam}, the pseudocode in this section abstracts away the choice of optimizer.
+  
+  The DQN algorithm is given in Algorithm~\ref{alg:dqn}. As deep RL methods are rarely trained with plain SGD, instead opting for adaptive methods like Adam \cite{kingma2015adam}, the pseudocode in this section abstracts away the choice of optimizer.
   
   \begin{algorithm}[t]
   \caption{Deep Q-Learning (DQN)}
@@ -493,6 +495,8 @@
   \EndFor
   \end{algorithmic}
   \end{algorithm}
+  
+  These two mechanisms effectively reduce the Q-learning algorithm to solving a sequence of approximately i.i.d supervised regression problems, where the performance of DNNs is much more robust. 
   
   \subsection{Proximal Policy Optimization}
   Proximal Policy Optimization (PPO) \tocite{PPO} is an actor-critic method designed for use with DNNs. The core algorithm is the same actor-critic method in Algorithm~\ref{alg:ac}, except using a $\lambda$-return in place of the TD(0) target in both the critic and actor updates. Analogously to how DQN makes Q-learning more robust, PPO introduces several changes to address two distinct sources of instability for actor-critic methods in deep RL.
@@ -587,7 +591,7 @@
       p_k = \argmin_{p \in \RR^d} m_k(p) \quad \text{subject to} \quad \norm{p} \le \Delta_k.
       \label{eq:tr_subproblem}
   \end{equation}
-  Setting $B_k$ to the Hessian yields the trust region Newton method, while $B_k = 0$ \cite{nocedal2006numerical} produces a first-order model. On each update, trust region methods adapt the radius based on how accurately the model predicted the actual observed change in the objective. Given a step $p_k$, the following quantity, which we refer to as the \textit{gain ratio}, measures the agreement:
+  Setting $B_k$ to the Hessian yields the trust region Newton method, while $B_k = 0$ \cite{nocedal2006numerical} produces a first-order model. On each update, trust region methods adapt the radius based on how accurately the model predicted the actual observed change in the objective. Given a step $p_k$, the following quantity, which we refer to as the \textit{reduction ratio}, measures the agreement:
   \begin{equation}
       \rho_k = \frac{f_k(\xAt{k}) - f_k(\xAt{k} + p_k)}{m_k(0) - m_k(p_k)},
       \label{eq:tr_ratio}
@@ -610,216 +614,7 @@
   \end{equation}
   The Cauchy point has a key benefit of being relatively inexpensive to compute, as it does not require any matrix factorization. It also serves as a framework for combining trust region methods with modern first-order optimizers. When $B_k = 0$ the model is linear and $\tau_k = 1$, so the Cauchy point reduces to the full steepest-descent step scaled to the trust region boundary, $p_k^C = -\Delta_k \nabla f_k(\xAt{k}) / \norm{\nabla f_k(\xAt{k})}$. Replacing the gradient with any descent direction $\updateAt{k}$ yields the step $\Delta_k \updateAt{k} / \norm{\updateAt{k}}$.
 
-
-\chapter{Parallel Argmin Line Search} \label{sec: pals}
-We introduce a new algorithm that is more effective for RL, that uses a parallel search to avoid sequential backtracking and common initialization heuristics\cite{vaswani2019painless,galli2023monotone}, and allows for use of a more effective selection criterion based on the step size that minimizes the objective the most.
-
-We propose a framework for integrating line search techniques into RL to adaptively determine step sizes for both value function approximation and policy optimization.
-As discussed, a primary hurdle to adopting line searches is the sequential backtracking procedure.
-One simple insight is that the backtracking procedure is in fact paralellizable.
-Using modern hardware accelerators, the entire step size search can be executed in parallel. This alters the design space: we no longer must rely on conservative initializations or incremental heuristics for computational efficiency. Instead, we can recover a panoptic view of the local objective landscape. By searching over a sufficiently large set of step sizes, the algorithm can better capture the local geometry and can achieve greater progress.
-
-Rather than accepting the first step size that satisfies the Armijo condition as is typical with sequential backtracking line searches, we propose a more aggressive selection strategy. We select the step size that most minimizes $f_k$ along $\updateAt{k}$ while still satisfying the stochastic Armijo condition:
-\begin{equation}\label{eq_armijo_sgd}
-    \stepSizeAt{k} = \arg\min_{\stepSize \in \mathcal{H}_k} f_k(\xAt{k} + \eta \updateAt{k})
-\end{equation}
-where $\mathcal{H}_k$ includes the smallest step size and the candidate step sizes that satisfy Equation~\ref{eq:armijo_condition}:
-\begin{equation}
-\mathcal{H}_k = \left\{ \eta_k^{(i)} \;\middle|\; i \in \{0, 1, \dots, B\},\;
-  f_k(x_k + \eta_k^{(i)} u_k) \leq f_k(x_k) + c\eta_k^{(i)} \langle \nabla f_k(x_k), u_k\rangle \right\}
-  \cup \left\{ \eta_0 \beta^B \right\}
-    \label{eq:min_search}
-\end{equation}
-We call this the \textit{Parallel Argmin Line Search} (PALS), with pseudocode in Algorithm~\ref{alg:argmin-armijo} in Appendix ~\ref{supp:algs}.
-Note that in our ablations we also tested a variant that uses the non-monotone condition, but found it to perform worse.
-
-The requirement $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$ disqualifies many popular optimizers, such as Adam \cite{kingma2015adam}. Letting $g_k = \nabla f_k(\xAt{k})$ and $\beta_1, \beta_2 > 0$, Adam computes $u_k = -A^{-1}_k m_k$ where $A_k^2 = \mathrm{diag}(\beta_2 g_{k-1} + (1 - \beta_2) g_k^2)$ is a diagonal preconditioner and $m_k = \beta_1 m_{k-1} + (1 - \beta_1) g_k$ is a momentum term. This momentum term causes difficulties since $\inner{\nabla f_k(\xAt{k})}{m_k}_{A_k^{-1}}$ is not guaranteed to be negative. Recently, \cite{vaswani2020adaptive} motivated a new way to combine Adam with line search methods by dropping $m_k$ in the Armijo condition when searching for a step size $\stepSizeAt{k}$:
-\begin{equation}
-    f_k(\xAt{k} - \stepSizeAt{k} A_k^{-1} \nabla f_k(\xAt{k})) \le f_k(\xAt{k}) - c \stepSizeAt{k} \norm{\nabla f_k(\xAt{k})}_{A_k^{-1}},
-    \label{eq:adam_armijo_condition}
-\end{equation}
-while still updating with $u_k = -A_k^{-1} m_k$. We adopt this approach when using PALS with Adam. Importantly, the entire line search remains parallelizable.
-
-\chapter{Gain Ratio for Adaptive Step Size}
-
-\section{A First-Order Stochastic Trust-Region Method}
-\todo{This is the new method that is very similar to mine I think is important to compare to, very simple first order TR}
-
-\section{Adaptive Step Size using the Gain Ratio}
-\todo{This is my approach which i think should actually not technically be called TR to distinguish it from the frist order method above, since we dont actually clip the update vec to be within the tr, we just use the tr update rule to grow/shrink the step size}
-\todo{Need to implement the standard first order method to compare to this}
-
-
-
-\chapter{Overview of Empirical Study and Experiment Design}
-\chapter{Comparison to Fixed Step Size}
-\begin{enumerate}
-  \item Adaptive step-size methods require significantly larger batch sizes than standard deep RL defaults to match the performance of fixed step-size baselines. 
-  \item Popular environment suites used for benchmarking deep RL algorithms do not effectively demonstrate the need for adaptive step size methods. The best tuned step size is often the same across each environment, allowing for a single fixed step size to perform well across all MDPs. This does not reflect the complexity of diverse real-world applications \todo{citation}. \todo{Mention Matt's classic control suite here if we end up running it. Also maybe keep these shorter and give more detail in the actual sections?}
-  \item Note the effcitveness of linesearch despite no garantee that the interpolation condition holds, perhaps it does hold over the on policy distribution since the agent only ever regularly enters a relatively small portion of the state space. 
-\end{enumerate}
-\section{The Importance of Large Batch Size}
-\todo{Note that some LS methods for the non-interpolation have been shown to need large batch size in SL to (from painless): "Other authors [12, 17, 22, 42, 62] use a line-search termination criteria that requires function/gradient evaluations averaged over multiple samples. However, in order to achieve convergence, the number of samples required per iteration (the “batch-size”) increases progressively, losing the low per iteration cost of SGD."}
-\chapter{Globalization Strategies with Adam}
-\section{Control with DQN}
-\section{Control with PPO}
-\chapter{Resolving Challenges with Sharpness}
-\section{Sharpness Aware Minimization}
-\chapter{The Necessity of Adaptive Step Size Methods}
-\todo{Suite from Matt. Would be really nice to introduce a suite here doing what Matt did with classic control but with MuJoCo, probably don't have time though :<}
-
-
-
-
-
-
-
-
-
-
-\chapter{Experiment material from paper}
-\todo{ Not yet adapted no need for Adam to review yet. Also planning to move this into one of the above chapters (see orangization outlined above) rather than having seperate chapter for ppo and dqn}
-\section{Experiment Setup}
-To ensure consistency, we maintained identical hyperparameters across all experiments unless otherwise noted. MuJoCo and Brax experiments use the standard PPO MLP: two hidden layers of 64 units with tanh activations \cite{shengyi2022the37implementation}. We used a minibatch size of 1024. Fixed step size baselines for SGD, RMSprop, and Adam were tuned via grid search over $\eta \in \{10^{-5}, \dots, 10^{-1}, 0.5\}$. Following \cite{neumann2023greedy}, we selected the step size $\eta$ that maximized aggregate performance across all seeds and environments after normalizing training loss (rescaling 5th and 95th percentiles to 0 and 1 respectively).
-Line searches always started from $\stepSizeInit = 1$ and performed $B=30$ backtracking steps with $\beta=0.7$. We set $c=0.1$ for Armijo variants \cite{vaswani2019painless} and $c=0.5$ for Non-monotone variants \cite{galli2023monotone}.
-
-\begin{figure}[t]
-     \centering
-     \includegraphics[width=\textwidth]{figures/ppo_learning_curves_final.png}
-     \caption{PPO control with Adam and RMSProp in MuJoCo over 20 seeds.}
-     \label{fig:ppo_learning_curves_adam}
-\end{figure}
-
-\section{PPO Control in Brax MuJoCo}
-We now examine the performance of line search methods in control with PPO.
-We use line search for both the parameterized policy and state-value network.
-In this section, we omit Heuristic Armijo as applying it in the online setting is not straightforward. We measure the performance of all methods over 3 million steps on 5 environments from the Brax MuJoCo suite \cite{brax2021github} with 20 random seeds.
-For baselines, we linearly annealed step sizes over time as is common with PPO \cite{shengyi2022the37implementation} and examined both the default PPO batch size of 64 and batch size 1024 (denoted PPO-64 and PPO-1024). We tuned the initial step sizes for the linearly annealed PPO-64 and PPO-1024 separately.
-All other hyperparameter and network architecture settings are set according to \cite{shengyi2022the37implementation}.
-
-\begin{wrapfigure}[16]{R}{0.55\textwidth}
-     \includegraphics[width=0.55\textwidth]{figures/mean_normalized_return.png}
-     \caption{PPO control with Adam and RMSProp with different line search methods, aggregated across MuJoCo.}
-     \label{fig:ppo_overall_bar}
-\end{wrapfigure}
-Figure \ref{fig:ppo_overall_bar} shows the return for all methods, with Adam and RMSProp over 3 million environment interactions. Results for SGD are shown in Appendix \ref{app_ppo_control}. We can see that overall PALS performs consistently well for the two optimizers, doing slightly worse than backtracking Armijo and a fixed step size with Adam but notably better than backtracking Armijo and a fixed step size with RMSProp.
-
-We also provide the learning curves in Figure \ref{fig:ppo_learning_curves_adam}, for a closer look.
-PALS roughly matched or outperformed a fixed step size in 4 of 5 environments with Adam and all environments with RMSProp and SGD. Backtracking Armijo typically performed worse than a fixed step size for all three base optimizers, while backtracking non-monotone was typically much worse with Adam (where it selected larger critic step sizes than other methods) and better with RMSProp and SGD. Overall, PALS can reliably match the performance of a tuned baseline across diverse settings where standard backtracking approaches struggle.
-
-In the full-batch, non-convex, supervised setting, line search algorithms have been shown to select highly conservative step sizes and fail to reach the edge of stability (EOS) \cite{roulet2024stepping}, resulting in slow convergence to sharp, poor-performing local minima. However, we do not observe this behavior with the Armijo line search in the online control setting, perhaps because the implicit regularization of stochastic updates may alleviate EOS undershooting \cite{roulet2024stepping}. In fact, the strong performance of PALS relative to regular backtracking may be attributed to selecting more conservative step sizes in the RL control setting, where stochastic estimates of non-stationary objectives can be high-variance.
-
-\begin{figure}[htbp]
-\centering
-\includegraphics[width=\textwidth]{figures/ppo_mean_return_bars_and_ss.png}
-\caption{The effect of batch size on performance in Humanoid of different line search methods: PALS,  backtracking Armijo and backtracking Nonmonotone. (a) Mean return of PPO with RMSProp using a batch size of 1024 and 64. (b) Step sizes for the actor and critic in PPO with RMSProp for batch size 1024 and 64 over 20 seeds.}\label{fig:batch_size}
-\end{figure}
-
-\section{The effect of batch size}
-To examine the effect of batch size on the performance of the line search methods in the control setting, Figure \ref{fig:batch_size}(a) compares the mean return in Ant with batch size 1024 and 64 with RMSProp. Similar to what has been observed in supervised learning, a larger batch size greatly improves the control performance of all line search methods \cite{roulet2023interplay}, with nearly all failing to learn with small batch size. Figure \ref{fig:batch_size}(b) shows that with small batch size, the accepted step sizes can be larger with higher variance, particularly for the actor. This result holds for SGD and Adam as well.
-
-One other interesting note is that PALS also improved robustness to the batch size choice. We obtained consistent performance across all settings with a fixed batch size of 1024 for PALS. This was not the case for a fixed step size.
-PPO-64 achieved better performance than PPO-1024 and the line search methods in 3 of 5 environments, but it failed in Humanoid. By contrast, PALS achieved robust performance across all environments with a single batch size.
-
-\renewcommand{\bibname}{References}
-\bibliography{ref}
-\bibliographystyle{IEEEtran}
-
-\appendix
-
-\chapter{Line Search Algorithms} \label{supp:algs}
-
-In this section, we show the line search algorithm used in this work. Algorithm~\ref{alg:argmin-armijo} shows the Parallel Argmin Line Search (PALS).
-
-\begin{algorithm}[h]
-	\caption{Parallel Argmin Line Search}
-    \label{alg:argmin-armijo}
-	\begin{algorithmic}[1]
-		\Require {(Possibly stochastic) Loss function $f: \mathbb{R}^n \to \mathbb{R}$,
-			Initial point $x_0 \in \mathbb{R}^n$,
-			$c \in (0, 1)$,
-			Initial step size $\stepSizeInit > 0$,
-			Contraction factor $\beta \in (0, 1)$,
-			Backtracking steps $B \in \mathbb{N}$,
-            Convergence tolerance $\epsilon > 0$
-		}
-        \State Initialize iteration counter $k \leftarrow 0$
-        \While{$\|\nabla f(x_k)\| > \epsilon$}
-            \State Compute descent direction $\update_k$ \Comment{e.g., $\update_k = -\nabla f(x_k)$}
-		    \State Set $\mathcal{H}_k = \left\{
-			    \stepSize_k^{(i)} = \stepSizeInit \beta^{i} \mid i = 0, 1, \ldots, B \text{ and } f(x_k + \stepSize_k^{(i)} \update_k)
-			    \le f(x_k) + \stepSize_k^{(i)} c \inner{\nabla f(x_k)}{\update_k}
-		    \right\}$
-            \If{$\mathcal{H}_k$ is empty}
-                \State $\stepSize_k^* = \stepSizeInit \beta^B$ \Comment{Fallback if Armijo condition is not met}
-            \Else
-		        \State $\stepSize_k^* = \argmin_{\eta \in \mathcal{H}_k} f(x_k + \eta \update_k)$
-            \EndIf
-            \State Update point: $x_{k+1} = x_k + \stepSize_k^* \update_k$
-            \State Increment counter: $k \leftarrow k + 1$
-        \EndWhile
-        \State \Return $x_k$
-	\end{algorithmic}
-\end{algorithm}
-
-\chapter{PPO Control in MuJoCo} \label{app_ppo_control}
-\begin{figure}[h]
-     \centering
-     \includegraphics[width=\textwidth]{figures/ppo_learning_curvers_adam.png}
-     \caption{PPO control with Adam in MuJoCo over 20 seeds.}
-     \label{fig:ppo_learning_curves_rmsp}
-\end{figure}
-
-\begin{figure}[H]
-     \centering
-     \includegraphics[width=\textwidth]{figures/ppo_rmsprop_new.png}
-     \caption{PPO control with RMSprop in MuJoCo over 20 seeds.}
-     \label{fig:ppo_learning_curves_rmsp}
-\end{figure}
-
-\begin{figure}[H]
-     \centering
-     \includegraphics[width=\textwidth]{figures/ppo_sgd.png}
-     \caption{PPO control with SGD in MuJoCo over 20 seeds.}
-     \label{fig:ppo_learning_curves_sgd}
-\end{figure}
-
-\end{document}
-
-%%%%%% USEFUL TEMPLATE CODE %%%%%%
-
-% \begin{figure}[!hbp]
-%   \centering
-%   \includegraphics[scale=0.4]{figures/drawing.pdf}
-%   \caption{Figure caption.} 
-%   \label{fig: figure_name}
-% \end{figure}
-
-% \begin{algorithm}[!hbt]
-%   \caption{Algorithm caption.}
-%   \label{alg: alg_name}
-%   \begin{algorithmic}
-%     \State Pseudocode line 1
-%     \State Pseudocode line 2
-%   \end{algorithmic}
-% \end{algorithm}
-
-% \begin{restatable}{thm}{thm_name} \label{thm: thm_name}
-%   Theorem statement.
-% \end{restatable}
-% \begin{proof}
-%   Add the proof here.
-% \end{proof}
-
-% \begin{table}[!hbt]
-%   \centering
-%   \begin{tabular}{c|c|c}
-%     \textbf{Col 1}& \textbf{Col 2} & \textbf{Col 3} \\
-%     \hline \hline
-%     text & text & text \\
-%     \hline
-%     text & text & text \\
-%   \end{tabular}
-%   \caption{Table caption.} 
-%   \label{table: caption}
-% \end{table}
+  \renewcommand{\bibname}{References}
+  \bibliography{ref}
+  \bibliographystyle{IEEEtran}
+  \end{document}
