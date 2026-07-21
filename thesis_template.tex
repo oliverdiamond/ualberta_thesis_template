@@ -612,6 +612,42 @@ where
 The Cauchy point has a key benefit of being relatively inexpensive to compute compared to exact methods, as it does not require any matrix factorization. It also serves as a framework for combining trust region methods with modern first-order optimizers. When $B_k = 0$ the model is linear and $\tau_k = 1$, so the Cauchy point reduces to the full steepest-descent step scaled to the trust region boundary, $p_k^C = -\Delta_k \nabla f_k(\xAt{k}) / \norm{\nabla f_k(\xAt{k})}$. Replacing the gradient with any descent direction $\updateAt{k}$ yields the step $\Delta_k \updateAt{k} / \norm{\updateAt{k}}$.
 
 \chapter{Methods}
+
+\section{First-Order Trust Region \todo{Does this one belong in background?}}
+
+\section{Gain-Ratio Adaptive Step Size} % Local TODO: make terms and style consistent and formatting consistent with the other pseudocode
+\begin{algorithm}
+\caption{Gain-Ratio Adaptive Step Size (GRASS)}
+\begin{algorithmic}[1]
+\State \textbf{Input:} initial learning rate $\eta_0$, window size $K$, thresholds $\tau_{\text{lo}} = 0.25$, $\tau_{\text{hi}} = 0.75$; factors $\alpha_{\text{shrink}} = 0.5$, $\alpha_{\text{grow}} = 2$
+\State Initialize $\eta \gets \eta_0$, buffer $R \gets [\,]$, step counter $t \gets 0$
+\For{each update}
+    \State Sample batch $B$
+    \State Compute gradient $g \gets \nabla_\theta L(\theta; B)$
+    \State Compute descent direction $u$
+    \State $\ell_{\text{before}} \gets L(\theta; B)$
+    \State $s \gets \langle u, g \rangle$ \Comment{slope}
+    \State $\theta \gets \theta + \eta \cdot u$ 
+    \State $\ell_{\text{after}} \gets L(\theta; B)$
+    \State $\rho \gets (\ell_{\text{before}} - \ell_{\text{after}}) \,/\, (-\eta \cdot s)$
+    \State Append $\rho$ to $R$
+    \State $t \gets t + 1$
+    \If{$t \bmod K = 0$}
+        \State $\bar{\rho} \gets \text{median}(R)$
+        \If{$\bar{\rho} < \tau_{\text{lo}}$}
+            \State $\eta \gets \alpha_{\text{shrink}} \cdot \eta$
+        \ElsIf{$\bar{\rho} > \tau_{\text{hi}}$}
+            \State $\eta \gets \alpha_{\text{grow}} \cdot \eta$
+        \EndIf
+        \State $R \gets [\,]$
+    \EndIf
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Gain-Ratio with a Second Order Model}
+Can be thought of as the Cauchy point with the trust region scaled by the update norm. 
+
 \section{Parallel Argmin Line Search} \label{sec: pals}
 We introduce a new algorithm that is more effective for RL, that uses a parallel search to avoid sequential backtracking and common initialization heuristics\cite{vaswani2019painless,galli2023monotone}, and allows for use of a more effective selection criterion based on the step size that minimizes the objective the most.
 
@@ -641,8 +677,8 @@ The requirement $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$ disqualifies man
 \end{equation}
 while still updating with $u_k = -A_k^{-1} m_k$. We adopt this approach when using PALS with Adam. Importantly, the entire line search remains parallelizable.
 
-\begin{algorithm}[h] % todo: make consistent with terminology and notation and formatting used in sec:adaptive
-    \caption{Parallel Argmin Line Search}
+\begin{algorithm}[h] % Local todo: make consistent with terminology and notation and formatting used in sec:adaptive
+    \caption{Parallel Argmin Line Search (PALS)}
     \label{alg:argmin-armijo}
     \begin{algorithmic}[1]
         \Require (Possibly stochastic) Loss function $f: \mathbb{R}^n \to \mathbb{R}$,
@@ -676,73 +712,87 @@ while still updating with $u_k = -A_k^{-1} m_k$. We adopt this approach when usi
     \end{algorithmic}
     \end{algorithm}
 
-\section{First-Order Trust Region}
-\todo{This is the new method that is very similar to mine I think is important to compare to, very simple first order TR}
+\section{Globalization Strategies with Momentum-Based Optimizers}
 
-\section{Gain-Ratio Adaptive Step Size} % TODO: make terms and style consistent and formatting consistent with the other pseudocode
-\begin{algorithm}
-\caption{Gain-Ratio Adaptive Step Size (GRASS)}
-\begin{algorithmic}[1]
-\State \textbf{Input:} initial learning rate $\eta_0$, window size $K$, thresholds $\tau_{\text{lo}} = 0.25$, $\tau_{\text{hi}} = 0.75$; factors $\alpha_{\text{shrink}} = 0.5$, $\alpha_{\text{grow}} = 2$
-\State Initialize $\eta \gets \eta_0$, buffer $R \gets [\,]$, step counter $t \gets 0$
-\For{each update}
-    \State Sample batch $B$
-    \State Compute gradient $g \gets \nabla_\theta L(\theta; B)$
-    \State Compute descent direction $u$
-    \State $\ell_{\text{before}} \gets L(\theta; B)$
-    \State $s \gets \langle u, g \rangle$ \Comment{slope}
-    \State $\theta \gets \theta + \eta \cdot u$ 
-    \State $\ell_{\text{after}} \gets L(\theta; B)$
-    \State $\rho \gets (\ell_{\text{before}} - \ell_{\text{after}}) \,/\, (-\eta \cdot s)$
-    \State Append $\rho$ to $R$
-    \State $t \gets t + 1$
-    \If{$t \bmod K = 0$}
-        \State $\bar{\rho} \gets \text{median}(R)$
-        \If{$\bar{\rho} < \tau_{\text{lo}}$}
-            \State $\eta \gets \alpha_{\text{shrink}} \cdot \eta$
-        \ElsIf{$\bar{\rho} > \tau_{\text{hi}}$}
-            \State $\eta \gets \alpha_{\text{grow}} \cdot \eta$
-        \EndIf
-        \State $R \gets [\,]$
-    \EndIf
-\EndFor
-\end{algorithmic}
-\end{algorithm}
-
-\subsection{Gain-Ratio with a Second Order Model}
-Can be thought of as the Cauchy point with the trust region scaled by the update norm. 
-
-\subsection{Globalization Strategies with Momentum-Based Optimizers}
-
-\subsection{Globalization Strategies with Sharpness Aware Minimization}
+\section{Globalization Strategies with Sharpness Aware Minimization}
 
 \chapter{Experiment Setup}
+In this section we describe the empirical design used to evaluate the performance of globalization strategies for adaptive step size selection in reinforcement learning. We first outline several suites of RL environments with continuous and discrete action spaces of varying complexity. We then specify the implementation details and hyperparameter settings for all examined algorithms, base optimizers and globalization strategies. Lastly, we define the experimental protocol for evaluating algorithm performance.
 
 \section{Environments}
+The first set of envrionments that we examine are from the classic control suite \tocite{citation}.
+% todo: concise general description of classic control environments, ie what the inputs are and how they affect the outputs but do it in a way that is geneal for all of them rather than saying "acrobot is this, mountaincar is this"
+The classic control environments are defined for continuous action spaces, however their action space may be discretized by % local todo: explain how this is done by reviewing the code at /Users/oliverdiamond/Desktop/alberta/research/linesearch_brax/src/environment/discrete.py
+Specifically, we examine variants of the Acrobot, Cartpole and Mountaincar envrionments based on those outlined \tocite{sutton1998introduction}, with key implementation differences outlined in % local todo: make appendix section for this (dont need to write anything yet and ref it here)
 
-\section{Experiment Details}
-% 
+The second set of environments are taken from the Arcade Learning Environment (ALE) \tocite{ALE}. 
+% todo: concise explaination of the ALE and how it has higher dimensional states than classic control making it a harder optimization problem. 
+We use all envrionment settings from \tocite{Revisiting rainbow}, all of which are outlined in % local todo: make appendix section with sample of ale parameters, you can derive them by looking at this config: /Users/oliverdiamond/Desktop/alberta/research/linesearch_brax/experiments/exp114_thesis/dqn/atari/trust_region.json and this runner file: /Users/oliverdiamond/Desktop/alberta/research/linesearch_brax/src/train/dqn/dqn_control_atari_ckp.py and this wrapper file: /Users/oliverdiamond/Desktop/alberta/research/linesearch_brax/src/util/ale_wrapper.py
+In this work we only use atari 5 \tocite{atari 5}, a subset of the ALE that is reflective of performance on the full 57 game suite. All settings follow those defined in 
+
+The third set of envrionments is the Brax MuJoCo suite.
+% todo:concise general desciption of Brax MuJoCo that applies to all envs. Explain how it is based on mujoco but implemented in jax.
+Like the ALE, these envrionments all have high high-dimensional continuous state spaces, making learning policies and value functions a more challenging optimization problem than continuous classic control environments. However, Brax environments use proprioceptive states rather than pixel-based ones and also posses continuous action spaces % todo: give rough range of dimensionality
+We examine a subset of five environments from the full Brax suite, including: Ant, HalfCheetah, Swimmer, Humanoid, and Walker2d.
+
+\section{Algorithms}
+% We use line search for both the parameterized policy and state-value network.
+% For baselines, we linearly annealed step sizes over time as is common with PPO \cite{shengyi2022the37implementation} and examined both the default PPO batch size of 64 and batch size 1024 (denoted PPO-64 and PPO-1024). We tuned the initial step sizes for the linearly annealed PPO-64 and PPO-1024 separately.
+% All other hyperparameter and network architecture settings are set according to \cite{shengyi2022the37implementation}.
+
+% To ensure consistency, we maintained identical hyperparameters across all experiments unless otherwise noted. MuJoCo and Brax experiments use the standard PPO MLP: two hidden layers of 64 units with tanh activations \cite{shengyi2022the37implementation}. We used a minibatch size of 1024. Fixed step size baselines for SGD, RMSprop, and Adam were tuned via grid search over $\eta \in \{10^{-5}, \dots, 10^{-1}, 0.5\}$. Following \cite{neumann2023greedy}, we selected the step size $\eta$ that maximized aggregate performance across all seeds and environments after normalizing training loss (rescaling 5th and 95th percentiles to 0 and 1 respectively). Line searches always started from $\stepSizeInit = 1$ and performed $B=30$ backtracking steps with $\beta=0.7$. We set $c=0.1$ for Armijo variants \cite{vaswani2019painless} and $c=0.5$ for Non-monotone variants \cite{galli2023monotone}.
+We benchmark GRASS (with and without a second order model, which when used we denote as GRASS Cauchy) and PALS against the first-order trust region method outlined in % local todo: ref to section
+(henceforth refered to as simply Trust Region), the Cauchy point method (denoted as TR Cauchy), the standard backtracking Armijo linesearch, as well as tuned fixed step sizes. 
+
+We examine all methods with PPO in continuous-action Classic Control and Brax and with DQN in discrete-action classic control and the Atari-5. 
+To ensure consistency, we maintained identical hyperparameters across all experiments unless otherwise noted.
+We use line search for both the parameterized policy and state-value network.
+All experiments in the following chapters % local todo: ref the experiments section 
+employ all the examined step size selection methods in tandem with the Adam optimizer, however experiments with RMSProp and SGD are included in % local todo: ref appendix
+
+To select the fixed step size, we perform cross-environment-tuning \tocite{paper for this}. We repeat this process to determine the optimal fixed step-size for both batch sizes 64 and 1024 (denoted PPO-64 and PPO-1024) for each optimizer. For each optimizer, the best examined step-sizes are consistent across both batch sizes: $3^{-2}$ for SGD and $3^{-4}$ for RMSprop. 
+
+\section{Experiments and Performance}
+In all experiments, we deploy the agent in the environment by running the standard RL interaction loop described in % local todo ref to relevant background section
+for a fixed number of timesteps. We use 150 thousand timesteps in the classic control, 3 million in Brax MuJoCo \tocite{open ai baselines}, and 50 million in Atari \tocite{marlos paper}. We assess performance by examining the return achieved by the agent across all timesteps, averaged over several random seeds used for initializing the agent's learnable parameters % local todo: latex for agent parameters define in background section
+In Atari we use 3 seeds \todo{run at least 2 more seeds for all atari experiemnts, waiting to semi-finalize what we want to include before I do this}, while for all other envrionments we use 20 seeds. Because we are concerned with the performance of an agent while learning over the course of its lifetime, we specifically define performance for a single run as the average return across all episodes, weighted by episode length % local todo: latex for this 
+To measure aggregate performance across an envrionment suite, for each environment we first peform Winsorized Min-Max Normalization with $5^{\text{th}}$ and $95^{\text{th}}$ percentile bounds on the performance of all runs across all methods and then average per method to compute mean normalized performance for an individual environment. We then average this statistic across all environments to compute the overall mean normalized performance. % todo: this normalizaton description is very wordy can we make it cleaner 
+
 
 \chapter{Benchmarking Globalization Strategies Against Static Step Sizes}
 
 \section{Adaptive Step Size with DQN}
+% Make sure to mention gain ratio doing well despite using way less compute
+
 % Classic Control 
 
 % Atari
-
+% In the full-batch, non-convex, supervised setting, line search algorithms have been shown to select highly conservative step sizes and fail to reach the edge of stability (EOS) \cite{roulet2024stepping}, resulting in slow convergence to sharp, poor-performing local minima. However, we do not observe this behavior with the Armijo line search in the online control setting, perhaps because the implicit regularization of stochastic updates may alleviate EOS undershooting \cite{roulet2024stepping}. In fact, the strong performance of PALS relative to regular backtracking may be attributed to selecting more conservative step sizes in the RL control setting, where stochastic estimates of non-stationary objectives can be high-variance.
 \section{Adaptive Step Size with PPO}
 
 % Classic Control 
 
 % MuJoCo
+% Figure \ref{fig:ppo_overall_bar} shows the return for all methods, with Adam and RMSProp over 3 million environment interactions. Results for SGD are shown in Appendix \ref{app_ppo_control}. We can see that overall PALS performs consistently well for the two optimizers, doing slightly worse than backtracking Armijo and a fixed step size with Adam but notably better than backtracking Armijo and a fixed step size with RMSProp.
 
-\chapter{Challenges in Complex Environments} %TODO: Better name for this chapter
+
+% We also provide the learning curves in Figure \ref{fig:ppo_learning_curves_adam}, for a closer look.
+% PALS roughly matched or outperformed a fixed step size in 4 of 5 environments with Adam and all environments with RMSProp and SGD. Backtracking Armijo typically performed worse than a fixed step size for all three base optimizers, while backtracking non-monotone was typically much worse with Adam (where it selected larger critic step sizes than other methods) and better with RMSProp and SGD. Overall, PALS can reliably match the performance of a tuned baseline across diverse settings where standard backtracking approaches struggle.
+
+
+
+\chapter{Challenges in Complex Environments} % todo: Better name for this chapter
 % In this section we examine several key challenges that arise with globalization strategies in complex environments with high dimensional state and action spaces.
 
 \section{Large Batch Size} % todo: better name
+% To examine the effect of batch size on the performance of the line search methods in the control setting, Figure \ref{fig:batch_size}(a) compares the mean return in Ant with batch size 1024 and 64 with RMSProp. Similar to what has been observed in supervised learning, a larger batch size greatly improves the control performance of all line search methods \cite{roulet2023interplay}, with nearly all failing to learn with small batch size. Figure \ref{fig:batch_size}(b) shows that with small batch size, the accepted step sizes can be larger with higher variance, particularly for the actor. This result holds for SGD and Adam as well.
+
 % DQN
 
 % PPO
+% One other interesting note is that PALS also improved robustness to the batch size choice. We obtained consistent performance across all settings with a fixed batch size of 1024 for PALS. This was not the case for a fixed step size.
+% PPO-64 achieved better performance than PPO-1024 and the line search methods in 3 of 5 environments, but it failed in Humanoid. By contrast, PALS achieved robust performance across all environments with a single batch size.
+
 \section{Using Globalization Strategies with Momentum}
 % DQN
 
@@ -757,34 +807,6 @@ Can be thought of as the Cauchy point with the trust region scaled by the update
 Popular environment suites used for benchmarking deep RL algorithms do not effectively demonstrate the need for adaptive step size methods. The best tuned step size is often the same across each environment, allowing for a single fixed step size to perform well across all MDPs. This does not reflect the complexity of diverse real-world applications \todo{citation}.
 
 
-
-
-% \chapter{Experiment material from paper}
-% \todo{ Not yet adapted no need for Adam to review yet. Also planning to move this into one of the above chapters (see orangization outlined above) rather than having seperate chapter for ppo and dqn}
-% \section{Experiment Setup}
-% To ensure consistency, we maintained identical hyperparameters across all experiments unless otherwise noted. MuJoCo and Brax experiments use the standard PPO MLP: two hidden layers of 64 units with tanh activations \cite{shengyi2022the37implementation}. We used a minibatch size of 1024. Fixed step size baselines for SGD, RMSprop, and Adam were tuned via grid search over $\eta \in \{10^{-5}, \dots, 10^{-1}, 0.5\}$. Following \cite{neumann2023greedy}, we selected the step size $\eta$ that maximized aggregate performance across all seeds and environments after normalizing training loss (rescaling 5th and 95th percentiles to 0 and 1 respectively).
-% Line searches always started from $\stepSizeInit = 1$ and performed $B=30$ backtracking steps with $\beta=0.7$. We set $c=0.1$ for Armijo variants \cite{vaswani2019painless} and $c=0.5$ for Non-monotone variants \cite{galli2023monotone}.
-
-% \section{PPO Control in Brax MuJoCo}
-% We now examine the performance of line search methods in control with PPO.
-% We use line search for both the parameterized policy and state-value network.
-% In this section, we omit Heuristic Armijo as applying it in the online setting is not straightforward. We measure the performance of all methods over 3 million steps on 5 environments from the Brax MuJoCo suite \cite{brax2021github} with 20 random seeds.
-% For baselines, we linearly annealed step sizes over time as is common with PPO \cite{shengyi2022the37implementation} and examined both the default PPO batch size of 64 and batch size 1024 (denoted PPO-64 and PPO-1024). We tuned the initial step sizes for the linearly annealed PPO-64 and PPO-1024 separately.
-% All other hyperparameter and network architecture settings are set according to \cite{shengyi2022the37implementation}.
-
-% Figure \ref{fig:ppo_overall_bar} shows the return for all methods, with Adam and RMSProp over 3 million environment interactions. Results for SGD are shown in Appendix \ref{app_ppo_control}. We can see that overall PALS performs consistently well for the two optimizers, doing slightly worse than backtracking Armijo and a fixed step size with Adam but notably better than backtracking Armijo and a fixed step size with RMSProp.
-
-% We also provide the learning curves in Figure \ref{fig:ppo_learning_curves_adam}, for a closer look.
-% PALS roughly matched or outperformed a fixed step size in 4 of 5 environments with Adam and all environments with RMSProp and SGD. Backtracking Armijo typically performed worse than a fixed step size for all three base optimizers, while backtracking non-monotone was typically much worse with Adam (where it selected larger critic step sizes than other methods) and better with RMSProp and SGD. Overall, PALS can reliably match the performance of a tuned baseline across diverse settings where standard backtracking approaches struggle.
-
-% In the full-batch, non-convex, supervised setting, line search algorithms have been shown to select highly conservative step sizes and fail to reach the edge of stability (EOS) \cite{roulet2024stepping}, resulting in slow convergence to sharp, poor-performing local minima. However, we do not observe this behavior with the Armijo line search in the online control setting, perhaps because the implicit regularization of stochastic updates may alleviate EOS undershooting \cite{roulet2024stepping}. In fact, the strong performance of PALS relative to regular backtracking may be attributed to selecting more conservative step sizes in the RL control setting, where stochastic estimates of non-stationary objectives can be high-variance.
-
-% \section{The effect of batch size}
-% To examine the effect of batch size on the performance of the line search methods in the control setting, Figure \ref{fig:batch_size}(a) compares the mean return in Ant with batch size 1024 and 64 with RMSProp. Similar to what has been observed in supervised learning, a larger batch size greatly improves the control performance of all line search methods \cite{roulet2023interplay}, with nearly all failing to learn with small batch size. Figure \ref{fig:batch_size}(b) shows that with small batch size, the accepted step sizes can be larger with higher variance, particularly for the actor. This result holds for SGD and Adam as well.
-
-% One other interesting note is that PALS also improved robustness to the batch size choice. We obtained consistent performance across all settings with a fixed batch size of 1024 for PALS. This was not the case for a fixed step size.
-% PPO-64 achieved better performance than PPO-1024 and the line search methods in 3 of 5 environments, but it failed in Humanoid. By contrast, PALS achieved robust performance across all environments with a single batch size.
-
 \renewcommand{\bibname}{References}
 \bibliography{ref}
 \bibliographystyle{IEEEtran}
@@ -798,41 +820,3 @@ Popular environment suites used for benchmarking deep RL algorithms do not effec
 
 
 \end{document}
-
-%%%%%% USEFUL TEMPLATE CODE %%%%%%
-
-% \begin{figure}[!hbp]
-%   \centering
-%   \includegraphics[scale=0.4]{figures/drawing.pdf}
-%   \caption{Figure caption.} 
-%   \label{fig: figure_name}
-% \end{figure}
-
-% \begin{algorithm}[!hbt]
-%   \caption{Algorithm caption.}
-%   \label{alg: alg_name}
-%   \begin{algorithmic}
-%     \State Pseudocode line 1
-%     \State Pseudocode line 2
-%   \end{algorithmic}
-% \end{algorithm}
-
-% \begin{restatable}{thm}{thm_name} \label{thm: thm_name}
-%   Theorem statement.
-% \end{restatable}
-% \begin{proof}
-%   Add the proof here.
-% \end{proof}
-
-% \begin{table}[!hbt]
-%   \centering
-%   \begin{tabular}{c|c|c}
-%     \textbf{Col 1}& \textbf{Col 2} & \textbf{Col 3} \\
-%     \hline \hline
-%     text & text & text \\
-%     \hline
-%     text & text & text \\
-%   \end{tabular}
-%   \caption{Table caption.} 
-%   \label{table: caption}
-% \end{table}
