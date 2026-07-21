@@ -50,6 +50,7 @@
 \usepackage{multirow}
 \usepackage{longtable}
 \usepackage{makecell}
+\usepackage{booktabs}
 \usepackage{lipsum}
 \usepackage{etoolbox} %% <- for \pretocmd and \apptocmd
 \usepackage{algorithm}
@@ -336,8 +337,8 @@ where $R_{t+1} + \discount \vparam(S_{t+1})$ is the TD target and $\delta_t$ is 
 \end{algorithmic}
 \end{algorithm}
 
-Bootstrapping yields a biased, yet lower variance estimate of the true value function, and is still guaranteed to converge in the tabular setting 
-%\todo add footnote about not being garanteed to converge to the true values. 
+Bootstrapping yields a biased, yet lower variance estimate of the true value function. Moreover, on-policy TD(0) with linear function approximation is still guaranteed to converge to the TD fixed point (the best approximation representable by the features) under standard stochastic approximation
+conditions on the step size sequence.
 Using bootstrapped targets in place of the full return has the added benefit of allowing for immediate updates after each transition in the environment rather than waiting till the end of the episode. However, a key downside of Temporal Difference (TD) learning is slower credit assignment compared to Monte Carlo methods. Because TD updates rely on one-step transitions, it can take many episodes for rewards attained at the end of a trajectory to influence the value estimates for the early states that led to it.
 
 \subsection{$\lambda$-Returns}
@@ -611,7 +612,7 @@ where
 \end{equation}
 The Cauchy point has a key benefit of being relatively inexpensive to compute compared to exact methods, as it does not require any matrix factorization. It also serves as a framework for combining trust region methods with modern first-order optimizers. When $B_k = 0$ the model is linear and $\tau_k = 1$, so the Cauchy point reduces to the full steepest-descent step scaled to the trust region boundary, $p_k^C = -\Delta_k \nabla f_k(\xAt{k}) / \norm{\nabla f_k(\xAt{k})}$. Replacing the gradient with any descent direction $\updateAt{k}$ yields the step $\Delta_k \updateAt{k} / \norm{\updateAt{k}}$.
 
-\chapter{Methods}
+\chapter{Methods} \label{sec: methods}
 \todo{!IMPORTANT! (Q for Adam): I actually think a big part of what makes GRASS good is the averaging of the gain ratio, but i havent ablated this, and i used it for all the baselines that we compare to as well (can be used with any TR method), which i feel should maybe be an ablation and not the default? I.e should the baselines just be exactly as in the lit and then we can have an ablation where they do the averaging too? To show that 1. the averaging is good and 2. GRASS is still better bc of its other components. Of course there is the posibility that averaging doesn't matter and what is really useful only the other components, not sure}
 In this chapter we introduce two first-order methods for adaptive step size in RL: Parallel Argmin Line Search (PALS) and Gain-Ratio Adaptive Step Size (GRASS). These approaches build upon backtracking line search and trust region methods, including a second-order GRASS variant based on the Cauchy point. We also introduce several independent modifications to stabilize the chosen step sizes in high-variance regimes like RL. We show that these modifications can also be applied with backtracking Armijo line search, as well as standard first-order trust region and the Cauchy point. 
 
@@ -660,33 +661,7 @@ We call this the \textit{Parallel Argmin Line Search} (PALS), with pseudocode gi
     \end{algorithm}
 
 Note that the PALS algorithm also makes use of an exponential moving average (EMA) over the chosen step size. This improves robustness to noisy gradient estimates by preventing drastic changes in the learning rate. The same technique can also be applied to traditional backtracking line search.
-Pseudocode for the backtracking Armijo line search defined in Section~\ref{sec:adaptive} with EMA on the chosen step size is given below:
-
-\begin{algorithm}[h]
-    \caption{Backtracking Armijo Line Search with EMA}
-    \label{alg:armijo-ema}
-    \begin{algorithmic}[1]
-        \State \textbf{Input:} (possibly stochastic) loss function $f$, initial point $\xAt{0}$, sufficient decrease constant $c \in (0, 1)$, initial step size $\stepSizeInit > 0$, contraction factor $\beta \in (0, 1)$, backtracking steps $B \in \mathbb{N}$, EMA decay rate $\zeta \in (0, 1)$
-        \State Initialize iteration counter $k \gets 0$, EMA step size $\bar{\stepSize}_{-1} \gets \stepSizeInit$
-        \For{each update}
-            \State Compute descent direction $\updateAt{k}$ \Comment{e.g., $\updateAt{k} = -\nabla f_k(\xAt{k})$}
-            \State $i \gets 0$, accepted $\gets$ false
-            \While{$i \le B$ and \textbf{not} accepted}
-                \If{$f_k(\xAt{k} + \stepSizeInit \beta^i \updateAt{k}) \le f_k(\xAt{k}) + c\, \stepSizeInit \beta^i \inner{\nabla f_k(\xAt{k})}{\updateAt{k}}$}
-                    \State $\stepSizeAt{k}^* \gets \stepSizeInit \beta^i$, accepted $\gets$ true
-                \Else
-                    \State $i \gets i + 1$
-                \EndIf
-            \EndWhile
-            \If{\textbf{not} accepted}
-                \State $\stepSizeAt{k}^* \gets \stepSizeInit \beta^B$ \Comment{fallback if the Armijo condition is not met}
-            \EndIf
-            \State $\bar{\stepSize}_k \gets \zeta \bar{\stepSize}_{k-1} + (1 - \zeta) \stepSizeAt{k}^*$ \Comment{EMA over the chosen step size}
-            \State Update point: $\xAt{k+1} \gets \xAt{k} + \bar{\stepSize}_k \updateAt{k}$
-            \State Increment counter: $k \gets k + 1$
-        \EndFor
-    \end{algorithmic}
-\end{algorithm}
+Pseudocode for the backtracking Armijo line search defined in Section~\ref{sec:adaptive} with EMA on the chosen step size is given as Algorithm~\ref{alg:armijo-ema} in Appendix~\ref{app_algo_pseudocode}.
 
 \section{Gain-Ratio Adaptive Step Size} \label{sec:grass}
 Next we introduce a new adaptive step size method based on trust region: Gain-Ratio Adaptive Step Size (GRASS). Rather than adapting the radius of a strict trust region around the current parameters, GRASS uses the same gain-ratio heuristic to simply increase or decrease the step size directly. While traditional trust region methods can be thought of as normalizing the given update vector to unit length and then applying the step size $\Delta_k$, or $\tau_k \Delta_k$ in the case of the Cauchy point, GRASS simply removes the normalization step, preserving the magnitude of the update. Additionally, to improve stability, GRASS computes the median of the gain ratio over a window of $K$ updates before updating the step size.\footnote{Also note that one could alternatively update $\eta$ every step using a moving average of the gain ratio, however this may be counter-productive to the intended gains in stability and is not examined in this work.}
@@ -721,62 +696,8 @@ While conceptually similar to the stochastic line search methods with adaptive s
 
 GRASS can also utilize second order information by identifying the Cauchy point along the raw update vector and then scaling its length by $\eta$, rather than first normalizing the update vector to unit length and then scaling by $\eta$. This approach, which we refer to as GRASS Cauchy
 
-Similarly to the EMA used in PALS, aggregating the gain-ratio over many updates before performing an adjustment can be done with any trust region method, not just GRASS. 
-To isolate for the effect of removing the implicit normalization step in trust region methods, we also present the median gain-ratio with a simple first-order trust region method based on \tocite{2026 Preprint that does simple first order TR in SL} and the Cauchy point in Algorithm~\ref{alg:first-order-tr} and Algorithm~\ref{alg:cauchy-point-tr}, respectively.
-
-\begin{algorithm}
-\caption{First-Order Trust Region with Median Gain Ratio}
-\label{alg:first-order-tr}
-\begin{algorithmic}[1]
-\State \textbf{Input:} (possibly stochastic) loss function $f$, initial point $\xAt{0}$, initial step size $\stepSizeInit$, window size $K$, thresholds $\tau_{\text{lo}} = 0.25$, $\tau_{\text{hi}} = 0.75$, factors $\alpha_{\text{shrink}} = 0.5$, $\alpha_{\text{grow}} = 2$
-\State Initialize $\stepSize \gets \stepSizeInit$, buffer $R \gets [\,]$, iteration counter $k \gets 0$
-\For{each update}
-    \State Compute descent direction $\updateAt{k}$
-    \State $s_k \gets \inner{\nabla f_k(\xAt{k})}{\updateAt{k} / \norm{\updateAt{k}}}$ \Comment{slope along the normalized direction}
-    \State $\xAt{k+1} \gets \xAt{k} + \stepSize \, \updateAt{k} / \norm{\updateAt{k}}$
-    \State $\rho_k \gets \left(f_k(\xAt{k}) - f_k(\xAt{k+1})\right) / \left(-\stepSize \, s_k\right)$
-    \State Append $\rho_k$ to $R$
-    \State $k \gets k + 1$
-    \If{$k \bmod K = 0$}
-        \State $\bar{\rho} \gets \text{median}(R)$
-        \If{$\bar{\rho} < \tau_{\text{lo}}$}
-            \State $\stepSize \gets \alpha_{\text{shrink}} \cdot \stepSize$
-        \ElsIf{$\bar{\rho} > \tau_{\text{hi}}$}
-            \State $\stepSize \gets \alpha_{\text{grow}} \cdot \stepSize$
-        \EndIf
-        \State $R \gets [\,]$
-    \EndIf
-\EndFor
-\end{algorithmic}
-\end{algorithm}
-
-\begin{algorithm}
-\caption{Cauchy Point with Median Gain Ratio}
-\label{alg:cauchy-point-tr}
-\begin{algorithmic}[1]
-\State \textbf{Input:} (possibly stochastic) loss function $f$, initial point $\xAt{0}$, initial step size $\stepSizeInit$, window size $K$, thresholds $\tau_{\text{lo}} = 0.25$, $\tau_{\text{hi}} = 0.75$, factors $\alpha_{\text{shrink}} = 0.5$, $\alpha_{\text{grow}} = 2$
-\State Initialize $\stepSize \gets \stepSizeInit$, buffer $R \gets [\,]$, iteration counter $k \gets 0$
-\For{each update}
-    \State Compute descent direction $\updateAt{k}$ and normalize $\hat{u}_k \gets \updateAt{k} / \norm{\updateAt{k}}$
-    \State $s_k \gets \inner{\nabla f_k(\xAt{k})}{\hat{u}_k}$ \Comment{slope}
-    \State $c_k \gets \inner{\hat{u}_k}{B_k \hat{u}_k}$ \Comment{curvature}
-    \State $\tau_k \gets 1$ if $c_k \le 0$, else $\min(-s_k / (\stepSize \, c_k),\, 1)$ \Comment{Equation~\eqref{eq:cauchy_tau}}
-    \State $\xAt{k+1} \gets \xAt{k} + \tau_k \stepSize \, \hat{u}_k$
-    \State $\rho_k \gets \left(f_k(\xAt{k}) - f_k(\xAt{k+1})\right) / \left(-\tau_k \stepSize \, s_k - \tfrac{1}{2} \tau_k^2 \stepSize^2 c_k\right)$
-    \State Append $\rho_k$ to $R$
-    \State $k \gets k + 1$
-    \If{$k \bmod K = 0$}
-        \State $\bar{\rho} \gets \text{median}(R)$
-        \If{$\bar{\rho} < \tau_{\text{lo}}$}
-            \State $\stepSize \gets \alpha_{\text{shrink}} \cdot \stepSize$
-        \ElsIf{$\bar{\rho} > \tau_{\text{hi}}$}
-            \State $\stepSize \gets \alpha_{\text{grow}} \cdot \stepSize$
-        \EndIf
-        \State $R \gets [\,]$
-    \EndIf
-\EndFor
-\end{algorithmic}
-\end{algorithm}
+Similarly to the EMA used in PALS, aggregating the gain-ratio over many updates before performing an adjustment can be done with any trust region method, not just GRASS.
+To isolate for the effect of removing the implicit normalization step in trust region methods, we also present the median gain-ratio with a simple first-order trust region method based on \tocite{2026 Preprint that does simple first order TR in SL} and the Cauchy point, given as Algorithm~\ref{alg:first-order-tr} and Algorithm~\ref{alg:cauchy-point-tr} in Appendix~\ref{app_algo_pseudocode}, respectively.
 
 \section{Globalization Strategies with Momentum-Based Optimizers} \label{sec:momentum}
 As both line search and trust region rely on descent directions as input at each update, combining them with momentum-based optimizers that may produce ascent directions is non-trivial. For line search, the requirement $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$ disqualifies many popular optimizers, such as Adam \cite{kingma2015adam}. Letting $g_k = \nabla f_k(\xAt{k})$ and $\beta_1, \beta_2 > 0$, Adam computes $u_k = -A^{-1}_k m_k$ where $A_k^2 = \mathrm{diag}(\beta_2 g_{k-1} + (1 - \beta_2) g_k^2)$ is a diagonal preconditioner and $m_k = \beta_1 m_{k-1} + (1 - \beta_1) g_k$ is a momentum term. This momentum term causes difficulties since $\inner{\nabla f_k(\xAt{k})}{m_k}_{A_k^{-1}}$ is not guaranteed to be negative. Recently, \cite{vaswani2020adaptive} motivated a new way to combine Adam with line search methods by dropping $m_k$ in the Armijo condition when searching for a step size $\stepSizeAt{k}$:
@@ -786,17 +707,18 @@ As both line search and trust region rely on descent directions as input at each
 \end{equation}
 while still updating with $u_k = -A_k^{-1} m_k$. We adopt this approach when using line search methods with Adam. Trust region methods face a related but distinct difficulty in that they depend on constructing the local model from a descent direction. Let $\hat{u}_k = -A_k^{-1} \nabla f_k(\xAt{k})$ denote the no-momentum direction and $u_k = -A_k^{-1} m_k$ the momentum direction, and define
 \begin{equation}
-    s_k =
+\begin{aligned}
+    s_k &=
     \begin{cases}
         \hat{u}_k & \text{for GRASS and GRASS Cauchy,} \\[4pt]
-        \hat{u}_k / \norm{\hat{u}_k} & \text{for the first-order trust region method and the Cauchy point method,}
-    \end{cases}
-    \qquad
-    d_k =
+        \hat{u}_k / \norm{\hat{u}_k} & \text{for the first-order trust region and Cauchy point methods,}
+    \end{cases} \\[10pt]
+    d_k &=
     \begin{cases}
         u_k & \text{for GRASS and GRASS Cauchy,} \\[4pt]
-        u_k / \norm{u_k} & \text{for the first-order trust region method and the Cauchy point method.}
+        u_k / \norm{u_k} & \text{for the first-order trust region and Cauchy point methods.}
     \end{cases}
+\end{aligned}
 \end{equation}
 The step size $\stepSizeAt{k}$ is adapted via the gain ratio computed from $s_k$, following Algorithm~\ref{alg:grass}, and the Cauchy point scaling is $\tau_k = 1$ for GRASS and the first-order trust region method, or is obtained by applying Equation~\eqref{eq:cauchy_tau} to $s_k$ (in place of the gradient) for GRASS Cauchy and the Cauchy point method; in particular, $\tau_k$ for GRASS Cauchy is computed from the unnormalized $\hat{u}_k$, since $s_k = \hat{u}_k$ in that case. The parameter update is then taken along the momentum direction:
 \begin{equation}
@@ -805,7 +727,8 @@ The step size $\stepSizeAt{k}$ is adapted via the gain ratio computed from $s_k$
 \end{equation}
 To the best of our knowledge, this issue has not been examined in RL nor with trust region methods \todo{confirm this}.
 \section{Globalization Strategies with Sharpness Aware Minimization} \label{sec:sam}
-Gradient descent with a sufficiently large step size has been observed to enter a regime known as the edge of stability (EOS), where the sharpness of the loss landscape stabilizes near a threshold determined by the step size rather than continuing to grow \tocite{citation for EOS}. Reaching the EOS is typically desirable, as flatter regions of the loss landscape are hypothesized to generalize better than sharp ones \tocite{citation for flat minima generalization}. In the full-batch supervised setting, line search algorithms have been shown to sometimes select highly conservative step sizes and fail to reach the EOS \cite{roulet2024stepping}, resulting in slow convergence to sharp, poor-performing local minima.
+Gradient descent with a sufficiently large step size has been observed to enter a regime known as the edge of stability (EOS), where the sharpness of the loss landscape stabilizes near a threshold determined by the step size rather than continuing to grow \cite{cohen2021gradient}. Sharpness here is defined as the maximum eigenvalue of the Hessian $\lambda_{\max}(\nabla^2 f(x))$, or the maximum eigenvalue of the preconditioned Hessian $\lambda_{\max}(A^{-1}\nabla^2 f(x))$ when using optimizers that employ a diagonal preconditioner $A$ such as RMSProp and Adam \cite{cohen2024adaptive}.
+Reaching the EOS is typically desirable, as flatter regions of the loss landscape are hypothesized to generalize better than sharp ones \tocite{citation for flat minima generalization}. In the full-batch supervised setting, line search algorithms have been shown to sometimes select highly conservative step sizes and fail to reach the EOS \cite{roulet2024stepping}, resulting in slow convergence to sharp, poor-performing local minima.
 However, the effect of loss landscape sharpness on the performance of globalization strategies has not been studied in RL.
 
 Sharpness aware minimization is an optimization technique that incentivizes convergence to flatter regions of parameter space. SAM was introduced to directly penalize sharp minima by replacing the ordinary loss with a worst-case loss over a small neighborhood around the current parameters,
@@ -842,22 +765,22 @@ In this chapter we describe the empirical design used to evaluate the performanc
 \section{Environments}
 The first set of environments that we examine are from the classic control suite \tocite{citation}. These environments consist of low-dimensional continuous state spaces describing the position and velocity of a small mechanical system, with a continuous action controlling an applied force or torque that drives the system's dynamics.
 The classic control environments are defined for continuous action spaces, however their action space may be discretized by partitioning each action dimension into $n$ evenly spaced values spanning its range and taking the Cartesian product across all dimensions, yielding $n^d$ discrete actions for a $d$-dimensional continuous action space. Each discrete action is an index into this grid of points, which is mapped back to the corresponding continuous action vector before being passed to the underlying environment.
-Specifically, we examine variants of the Acrobot, Cartpole and Mountaincar environments based on those outlined \tocite{sutton1998introduction}, with key implementation differences outlined in % local todo: make appendix section for this (dont need to write anything yet and ref it here)
+Specifically, we examine variants of the Acrobot, Cartpole and Mountaincar environments implemented as modifications of the corresponding \texttt{gymnax} \tocite{gymnax} environments, with edits made to bring their dynamics more in line with those originally described by \cite{sutton1998introduction}; these edits are detailed in Appendix~\ref{app_classic_control_diffs}.
 
 The second set of environments are taken from the Arcade Learning Environment (ALE) \tocite{ALE}. Unlike classic control, the ALE presents the agent with raw pixel observations of Atari 2600 games, yielding a much higher-dimensional state space. This makes learning an accurate value function or policy a substantially harder optimization problem than the low-dimensional classic control settings.
-The ALE has many configurable parameters controlling the environment dynamics. We borrow all environment settings from the Google Dopamine baselines \tocite{Dopamine, Revisiting rainbow}, including sticky actions for stochastic transitions, a minimal action space per game, a frameskip of 4 frames per timestep, and a framestack of the previous 4 greyscaled frames to compose the state. The full set of ALE environment implementation details are outlined in % local todo: make appendix section with sample of ale parameters, you can derive them by looking at this config: /Users/oliverdiamond/Desktop/alberta/research/linesearch_brax/experiments/exp114_thesis/dqn/atari/trust_region.json and this runner file: /Users/oliverdiamond/Desktop/alberta/research/linesearch_brax/src/train/dqn/dqn_control_atari_ckp.py and this wrapper file: /Users/oliverdiamond/Desktop/alberta/research/linesearch_brax/src/util/ale_wrapper.py
+The ALE has many configurable parameters controlling the environment dynamics. We borrow all environment settings from the Google Dopamine baselines \tocite{Dopamine, Revisiting rainbow}, including sticky actions for stochastic transitions, a minimal action space per game, a frameskip of 4 frames per timestep, and a framestack of the previous 4 greyscaled frames to compose the state. The full set of ALE environment implementation details are outlined in Appendix~\ref{app_ale_params}.
 In this work we only examine the Atari-5 \tocite{atari 5}, a subset of the ALE that is reflective of performance on the full 57 game suite. 
 
 The third set of environments is the Brax MuJoCo suite, which reimplements a collection of continuous-control locomotion tasks originally simulated with the MuJoCo physics engine \tocite{brax} using JAX.
 Like the ALE, these environments all have high-dimensional continuous state spaces, making learning policies and value functions a more challenging optimization problem than continuous classic control environments. However, Brax environments use proprioceptive states rather than pixel-based ones and also possess continuous action spaces, with state dimensionality ranging from under 10 in the simplest environment to several hundred in the most complex, and action dimensionality ranging from 2 to 17.
 We examine a subset of five environments from the full Brax suite, including: Ant, HalfCheetah, Swimmer, Humanoid, and Walker2d.
 
-\section{Algorithms}
+\section{Algorithms} \label{sec:algorithms}
 We compare the performance of GRASS, GRASS Cauchy, the first-order trust region method outlined in Section~\ref{sec:grass}
 (henceforth referred to as simply Trust Region), the Cauchy point method (denoted TR Cauchy), PALS, backtracking Armijo linesearch, and tuned fixed step size baselines.
 GRASS and all the trust-region-based methods examined in this work share the same hyperparameters: the thresholds $\tau_{\text{lo}}, \tau_{\text{hi}}$ and factors $\alpha_{\text{shrink}}, \alpha_{\text{grow}}$ from Algorithm~\ref{alg:grass}, and the update interval $K$.
 Across all experiments, for $(\tau_{\text{lo}}, \tau_{\text{hi}})$ and $(\alpha_{\text{shrink}}, \alpha_{\text{grow}})$ we use standard values from the classical optimization literature \cite{nocedal2006numerical}: $(0.25, 0.75)$ and $(0.5, 2)$, respectively.
-For $K$, we use $\nicefrac{1}{4}$ of the target network refresh interval $C$ for DQN and $\nicefrac{1}{4}$ of the total updates performed after each data collection phase for PPO. All the examined trust-region-based methods utilize the median gain-ratio introduced in GRASS. However, we present an ablation using the traditional single-step gain-ratio with all methods in % local todo: ref a new appdix section for this
+For $K$, we use $\nicefrac{1}{4}$ of the target network refresh interval $C$ for DQN and $\nicefrac{1}{4}$ of the total updates performed after each data collection phase for PPO. All the examined trust-region-based methods utilize the median gain-ratio introduced in GRASS. However, we present an ablation using the traditional single-step gain-ratio with all methods in Appendix~\ref{app_gain_ratio_ablation}.
 
 For the line search methods, the search is always started from $\stepSizeInit = 1$ with sufficient decrease $c=0.1$.
 To reduce computational cost, DQN experiments in Atari are run with $B=10$ backtracking steps with decay factor $\beta=0.2$, while in all other settings we use $B=30$ with decay factor $\beta=0.7$.
@@ -874,15 +797,15 @@ With PPO, we select the step size separately for the actor network weights $\the
 For both the actor and critic networks, we use the standard PPO MLP: two hidden layers of 64 units with tanh activations \cite{shengyi2022the37implementation}. For all adaptive methods, we use a larger batch size of 1024 to reduce the variance of the gradient estimates used in determining step size. To facilitate fair comparison, for fixed step sizes we use both standard batch size 64 and larger batch size 1024. All other hyperparameter and network architecture settings are set according to \cite{shengyi2022the37implementation}. 
 
 % DQN details
-With DQN, we use adaptive step size methods for learning the parameters $\qparams$ of the action-value network. For classic control, we use an MLP with two hidden layers of 128 and 80 units, respectively, and ReLU activations. For Atari, we use the standard convolutional network introduced in \tocite{nature DQN}. Once again, for adaptive step size methods we use a larger batch size of 1024 in classic control and 512 in Atari, and we compare to fixed step sizes with both the same batch size and a more standard DQN batch size of $32$. For Atari, all other algorithm hyperparameters match Dopamine baselines \tocite{Dopamine}, while for classic control they match the defaults from \tocite{PureJaxRL repo}. All PPO and DQN hyperparameters for all environment suites are specified in % local todo: ref hyper table with env suites, algos as rows (so the env suite is a big left-most row and the algo is two rows in the next column that evenly divide it, and then all columns after that are the hypers for each algo. All the info you need for the hyper tables should be available by examing these 4 configs: /Users/oliverdiamond/Desktop/alberta/research/linesearch_brax/experiments/exp114_thesis/dqn/atari/trust_region.json, /Users/oliverdiamond/Desktop/alberta/research/linesearch_brax/experiments/exp114_thesis/dqn/classic/trust_region.json, /Users/oliverdiamond/Desktop/alberta/research/linesearch_brax/experiments/exp114_thesis/ppo/classic/trust_region.json, /Users/oliverdiamond/Desktop/alberta/research/linesearch_brax/experiments/exp114_thesis/ppo/mujoco/env_batch_1/trust_region.json and these runner files: /Users/oliverdiamond/Desktop/alberta/research/linesearch_brax/src/train/ppo/ppo_continuous_action.py, /Users/oliverdiamond/Desktop/alberta/research/linesearch_brax/src/train/dqn/dqn_control.py, /Users/oliverdiamond/Desktop/alberta/research/linesearch_brax/src/train/dqn/dqn_control_atari_ckp.py. Note the optimization method and its hypers here are not relevant we only care about the hypers for the DQN and PPO algo for this table. 
+With DQN, we use adaptive step size methods for learning the parameters $\qparams$ of the action-value network. For classic control, we use an MLP with two hidden layers of 128 and 80 units, respectively, and ReLU activations. For Atari, we use the standard convolutional network introduced in \tocite{nature DQN}. Once again, for adaptive step size methods we use a larger batch size of 1024 in classic control and 512 in Atari, and we compare to fixed step sizes with both the same batch size and a more standard DQN batch size of $32$. For Atari, all other algorithm hyperparameters match Dopamine baselines \tocite{Dopamine}, while for classic control they match the defaults from \tocite{PureJaxRL repo}. All PPO and DQN hyperparameters for all environment suites are specified in Appendix~\ref{app_hyperparams}.
 
 All experiments described in the remaining chapters of this thesis
 employ all the examined step size selection methods in tandem with the Adam optimizer, however experiments with RMSProp and SGD are included in Appendices~\ref{app_dqn_control_classic}, \ref{app_dqn_control}, \ref{app_ppo_control_classic}, and \ref{app_ppo_control}.
 When applied with Adam, all adaptive step size methods use the approach for handling momentum described in Section~\ref{sec:momentum}.
-Optimizer hyperparameters are set according to the Optax library defaults \tocite{optax}, open AI baselines \tocite{37 details, open ai baselines}, and Dopamine \tocite{dopamine} in classic control, Brax, and the Atari-5, respectively. Settings for each optimizer are reported alongside algorithm hyperparameters in % local todo: ref to hyper table
+Optimizer hyperparameters are set according to the Optax library defaults \tocite{optax}, open AI baselines \tocite{37 details, open ai baselines}, and Dopamine \tocite{dopamine} in classic control, Brax, and the Atari-5, respectively. Settings for each optimizer are reported alongside algorithm hyperparameters in Appendix~\ref{app_hyperparams}.
 When using the base optimizers with a fixed step size, we perform cross-environment-tuning \tocite{paper for this} to select the step size.
 For each environment suite and algorithm pairing, we perform a grid search over a wide range of candidate step sizes and select the step size with the best mean normalized performance across all environments in the set, as described in Section~\ref{sec:experiments-and-performance}.
-We perform tuning separately for each examined batch size, and we refer to a tuned fixed step size with a given batch size $N$ as \textit{Tuned N}. Ranges used in the grid search and the selected fixed step size for all optimizers, algorithms and environment suites are given in % local todo: ref to a new appendix section that has a table giving these values. 
+We perform tuning separately for each examined batch size, and we refer to a tuned fixed step size with a given batch size $N$ as \textit{Tuned N}. Ranges used in the grid search and the selected fixed step size for all optimizers, algorithms and environment suites are given in Appendix~\ref{app_tuning_ranges}.
 Additionally, when using a fixed step size with PPO, we linearly decay the step size over the agent's lifetime following the standard protocol outlined in \cite{shengyi2022the37implementation}. 
 
 \section{Experiments and Performance} \label{sec:experiments-and-performance}
@@ -917,10 +840,10 @@ To measure aggregate performance across an environment suite, we first apply Win
 
 
 
-\chapter{Challenges in Complex Environments} % todo: Better name for this chapter
+\chapter{Addressing Limitations of Globalization Strategies in Complex Environments}
 % In this section we examine several key challenges that arise with globalization strategies in complex environments with high dimensional state and action spaces.
 
-\section{Large Batch Size} % todo: better name
+\section{Sensitivity to Batch Size}
 % To examine the effect of batch size on the performance of the line search methods in the control setting, Figure \ref{fig:batch_size}(a) compares the mean return in Ant with batch size 1024 and 64 with RMSProp. Similar to what has been observed in supervised learning, a larger batch size greatly improves the control performance of all line search methods \cite{roulet2023interplay}, with nearly all failing to learn with small batch size. Figure \ref{fig:batch_size}(b) shows that with small batch size, the accepted step sizes can be larger with higher variance, particularly for the actor. This result holds for SGD and Adam as well.
 
 % DQN
@@ -933,7 +856,7 @@ To measure aggregate performance across an environment suite, we first apply Win
 % DQN
 
 % PPO
-\section{Sharpness Aware Minimization} % todo: better name
+\section{Mitigating Sharp Minima with SAM}
 % Qbert Sam vs no Sam
 
 % Atari 5 sam vs no sam (note increasing step size and how it makes performance worse which can be mitigated by higher increase threshold)
@@ -955,5 +878,258 @@ Popular environment suites used for benchmarking deep RL algorithms do not effec
 \section{PPO Control in Classic Control} \label{app_ppo_control_classic}
 \section{PPO Control in MuJoCo} \label{app_ppo_control}
 
+\chapter{Environment and Implementation Details}
+
+\section{Classic Control Implementation Differences} \label{app_classic_control_diffs}
+The Acrobot, Cartpole, and Mountaincar environments used in this work are implemented as edited versions of the corresponding \texttt{gymnax} \tocite{gymnax} environments. One change is applied uniformly across all three environments, while the other change is specific to Mountaincar. 
+
+\paragraph{Change applied to all three environments.}
+\begin{itemize}
+    \item \textbf{Proper episode cutoff termination.} Reaching the maximum episode length is now reported as a truncation signal, which is kept separate from the terminal signal and used to bootstrap value estimates. These transitions are conflated with true termination in the underlying \texttt{gymnax} implementations.
+\end{itemize}
+
+\paragraph{Mountaincar.} In addition to the change above, Mountaincar uses:
+\begin{itemize}
+    \item \textbf{The classic MountainCar termination condition and reward}, rather than those of \texttt{gymnax}'s continuous-action Mountaincar: the episode terminates only when the goal position is reached, and the reward is $-1$ per timestep until termination.
+    \item \textbf{Gym-based goal position and power} of $(0.45, 0.0015)$, rather than the classic values of $(0.5, 0.001)$ used by \cite{sutton1998introduction}. Here the environment follows the modern Gym convention rather than the original Sutton and Barto dynamics, chosen for consistency with the widely used Gym benchmark values.
+\end{itemize}
+
+
+\section{Arcade Learning Environment Configuration} \label{app_ale_params}
+All Atari-5 experiments use \texttt{ale\_py}'s vectorized ALE interface, \texttt{AtariVectorEnv}, with a single environment instance (\texttt{num\_envs = 1}). Table~\ref{tab:ale_params} lists every configurable parameter of \texttt{AtariVectorEnv} and the value used in this work.
+
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}l l@{}}
+\toprule
+Parameter & Value Used \\
+\midrule
+\texttt{game} & per Atari-5 game (see caption) \\
+\texttt{num\_envs} & 1 \\
+\texttt{frameskip} & 4 \\
+\texttt{grayscale} & True \\
+\texttt{stack\_num} & 4 \\
+\texttt{img\_height} & 84 \\
+\texttt{img\_width} & 84 \\
+\texttt{maxpool} & True \\
+\texttt{reward\_clipping} & True \\
+\texttt{noop\_max} & 0 \\
+\texttt{use\_fire\_reset} & False \\
+\texttt{episodic\_life} & False \\
+\texttt{life\_loss\_info} & False \\
+\texttt{max\_num\_frames\_per\_episode} & 108{,}000 (27{,}000 agent steps at a frameskip of 4) \\
+\texttt{repeat\_action\_probability} & 0.25 \\
+\texttt{full\_action\_space} & False (minimal, per-game action set) \\
+\texttt{continuous} & False \\
+\texttt{continuous\_action\_threshold} & 0.5 \\
+\texttt{batch\_size} & 0 (i.e.\ \texttt{num\_envs}) \\
+\texttt{autoreset\_mode} & \texttt{SAME\_STEP} \\
+\texttt{num\_threads} & 0 (auto) \\
+\texttt{thread\_affinity\_offset} & $-1$ (no affinity) \\
+\bottomrule
+\end{tabular}
+\caption{\texttt{AtariVectorEnv} configuration used for all Atari-5 experiments. The five games examined are battle\_zone, double\_dunk, name\_this\_game, phoenix, and qbert.}
+\label{tab:ale_params}
+\end{table}
+
+\chapter{Algorithm and Optimizer Hyperparameters}
+
+\section{DQN and PPO Hyperparameters} \label{app_hyperparams}
+Tables~\ref{tab:dqn_hypers} and~\ref{tab:ppo_hypers} report the DQN and PPO algorithm and network hyperparameters, respectively, used for each environment suite examined in this work. These settings are shared by all methods, both adaptive and fixed step size. Hyperparameters belonging to the step size selection method itself rather than to the underlying RL algorithm (such as $K$, $\tau_{\text{lo}}$, $\tau_{\text{hi}}$, $\alpha_{\text{shrink}}$, $\alpha_{\text{grow}}$, $B$, and $\beta$) are given in Section~\ref{sec:algorithms}. For each algorithm we report the batch size used by the adaptive step size methods as well as the batch sizes used by the tuned fixed step size baselines described in Section~\ref{sec:algorithms}.
+
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}l l l@{}}
+\toprule
+Hyperparameter & Classic Control & Atari-5 \\
+\midrule
+Environment timesteps & 150{,}000 & 50{,}000{,}000 \\
+Discount factor $\gamma$ & 0.99 & 0.99 \\
+Network & \makecell[l]{MLP: 2 hidden layers \\ (128, 80), ReLU} & \makecell[l]{Nature CNN \\ conv 32, $8{\times}8$, stride 4 \\ conv 64, $4{\times}4$, stride 2 \\ conv 64, $3{\times}3$, stride 1 \\ FC 512; ReLU} \\
+Adaptive-method batch size & 1024 & 512 \\
+Fixed-baseline batch sizes & 32, 1024 & 32, 512 \\
+Replay buffer capacity & 10{,}000 & 1{,}000{,}000 \\
+Steps before learning & 10{,}000 & 20{,}000 \\
+Training interval & 4 & 4 \\
+Target update interval & 600 & 8{,}000 \\
+Target update rate & 1.0 & 1.0 \\
+Exploration $\epsilon$ (start $\to$ finish) & $1.0 \to 0.05$ & $1.0 \to 0.01$ \\
+$\epsilon$ anneal steps & 15{,}000 & 250{,}000 \\
+Reward clipping & none & $\operatorname{sign}(\cdot)$ \\
+\bottomrule
+\end{tabular}
+\caption{DQN algorithm and network hyperparameters.}
+\label{tab:dqn_hypers}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}l l l@{}}
+\toprule
+Hyperparameter & Classic Control & Brax MuJoCo \\
+\midrule
+Environment timesteps & 150{,}000 & 3{,}000{,}000 \\
+Discount factor $\gamma$ & \multicolumn{2}{c}{0.99} \\
+Network (actor \& critic) & \multicolumn{2}{c}{MLP: 2 hidden layers (64, 64), tanh} \\
+Adaptive-method batch size & \multicolumn{2}{c}{1024} \\
+Fixed-baseline batch sizes & \multicolumn{2}{c}{64, 1024} \\
+Rollout length (steps) & \multicolumn{2}{c}{2048} \\
+Update epochs & \multicolumn{2}{c}{10} \\
+GAE $\lambda$ & \multicolumn{2}{c}{0.95} \\
+Clip parameter $\epsilon$ & \multicolumn{2}{c}{0.2} \\
+Entropy coefficient & \multicolumn{2}{c}{0.0} \\
+Max gradient norm & \multicolumn{2}{c}{0.5} \\
+Observation normalization & \multicolumn{2}{c}{on} \\
+Reward normalization & \multicolumn{2}{c}{on} \\
+Fixed step size schedule & \multicolumn{2}{c}{linear decay} \\
+\bottomrule
+\end{tabular}
+\caption{PPO algorithm and network hyperparameters. All settings other than the environment timestep budget are shared across the two suites.}
+\label{tab:ppo_hypers}
+\end{table}
+
+\section{Fixed Step Size Tuning Ranges} \label{app_tuning_ranges}
+For each environment suite, algorithm, and optimizer, we perform a grid search over the range of candidate fixed step sizes given in Table~\ref{tab:tuning_ranges} to obtain the \textit{Tuned N} baselines described in Section~\ref{sec:algorithms}, where $N$ denotes the batch size used. Table~\ref{tab:tuned_n} reports the selected fixed step size for each environment suite, algorithm, and optimizer. In every setting the selected step size was identical across the batch sizes examined, so a single value is reported per row.
+
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}l l l@{}}
+\toprule
+Env. Suite & Algorithm & Grid Search Range \\
+\midrule
+Classic Control & DQN & $1\mathrm{e}{-5}$ to $1\mathrm{e}{-1}$ \\
+Atari-5 & DQN & $6.25\mathrm{e}{-6}$ to $6.25\mathrm{e}{-1}$ \\
+Classic Control & PPO & $3\mathrm{e}{-5}$ to $3\mathrm{e}{-1}$ \\
+Brax MuJoCo & PPO & $3\mathrm{e}{-5}$ to $3\mathrm{e}{-1}$ \\
+\bottomrule
+\end{tabular}
+\caption{Grid search range for fixed step size tuning, by environment suite and algorithm.}
+\label{tab:tuning_ranges}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\small
+\setlength{\tabcolsep}{6pt}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{@{}l l l l l@{}}
+\toprule
+Env. Suite & Algorithm & Optimizer & Batch Sizes & Step Size \\
+\midrule
+Classic Control & DQN & Adam & 32, 1024 & $1\mathrm{e}{-3}$ \\
+Classic Control & DQN & RMSProp & 32, 1024 & $1\mathrm{e}{-3}$ \\
+Classic Control & DQN & SGD & 32, 1024 & $1\mathrm{e}{-3}$ \\
+Atari-5 & DQN & Adam & 32, 512 & $6.25\mathrm{e}{-5}$ \\
+Classic Control & PPO & Adam & 64, 1024 & $3\mathrm{e}{-3}$ \\
+Classic Control & PPO & RMSProp & 64, 1024 & $3\mathrm{e}{-3}$ \\
+Classic Control & PPO & SGD & 64, 1024 & $3\mathrm{e}{-3}$ \\
+Brax MuJoCo & PPO & Adam & 64, 1024 & $3\mathrm{e}{-4}$ \\
+Brax MuJoCo & PPO & RMSProp & 64, 1024 & $3\mathrm{e}{-4}$ \\
+Brax MuJoCo & PPO & SGD & 64, 1024 & $3\mathrm{e}{-2}$ \\
+\bottomrule
+\end{tabular}
+\caption{Selected fixed step size for each environment suite, algorithm, and optimizer. The step size was identical across the batch sizes examined in every setting. Atari-5 DQN was run only with Adam.}
+\label{tab:tuned_n}
+\end{table}
+
+\chapter{Pseudocode for Additional Adaptive Step Size Methods} \label{app_algo_pseudocode}
+This appendix contains pseudocode for the additional adaptive step size variants introduced in Chapter~\ref{sec: methods}. Algorithm~\ref{alg:armijo-ema} gives the backtracking Armijo line search with an EMA on the chosen step size (Section~\ref{sec: pals}). Algorithm~\ref{alg:first-order-tr} and Algorithm~\ref{alg:cauchy-point-tr} give the first-order trust region method and the Cauchy point method, respectively, each with the median gain-ratio update introduced in GRASS (Section~\ref{sec:grass}).
+
+\begin{algorithm}[H]
+    \caption{Backtracking Armijo Line Search with EMA}
+    \label{alg:armijo-ema}
+    \begin{algorithmic}[1]
+        \State \textbf{Input:} (possibly stochastic) loss function $f$, initial point $\xAt{0}$, sufficient decrease constant $c \in (0, 1)$, initial step size $\stepSizeInit > 0$, contraction factor $\beta \in (0, 1)$, backtracking steps $B \in \mathbb{N}$, EMA decay rate $\zeta \in (0, 1)$
+        \State Initialize iteration counter $k \gets 0$, EMA step size $\bar{\stepSize}_{-1} \gets \stepSizeInit$
+        \For{each update}
+            \State Compute descent direction $\updateAt{k}$ \Comment{e.g., $\updateAt{k} = -\nabla f_k(\xAt{k})$}
+            \State $i \gets 0$, accepted $\gets$ false
+            \While{$i \le B$ and \textbf{not} accepted}
+                \If{$f_k(\xAt{k} + \stepSizeInit \beta^i \updateAt{k}) \le f_k(\xAt{k}) + c\, \stepSizeInit \beta^i \inner{\nabla f_k(\xAt{k})}{\updateAt{k}}$}
+                    \State $\stepSizeAt{k}^* \gets \stepSizeInit \beta^i$, accepted $\gets$ true
+                \Else
+                    \State $i \gets i + 1$
+                \EndIf
+            \EndWhile
+            \If{\textbf{not} accepted}
+                \State $\stepSizeAt{k}^* \gets \stepSizeInit \beta^B$ \Comment{fallback if the Armijo condition is not met}
+            \EndIf
+            \State $\bar{\stepSize}_k \gets \zeta \bar{\stepSize}_{k-1} + (1 - \zeta) \stepSizeAt{k}^*$ \Comment{EMA over the chosen step size}
+            \State Update point: $\xAt{k+1} \gets \xAt{k} + \bar{\stepSize}_k \updateAt{k}$
+            \State Increment counter: $k \gets k + 1$
+        \EndFor
+    \end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{First-Order Trust Region with Median Gain Ratio}
+\label{alg:first-order-tr}
+\begin{algorithmic}[1]
+\State \textbf{Input:} (possibly stochastic) loss function $f$, initial point $\xAt{0}$, initial step size $\stepSizeInit$, window size $K$, thresholds $\tau_{\text{lo}} = 0.25$, $\tau_{\text{hi}} = 0.75$, factors $\alpha_{\text{shrink}} = 0.5$, $\alpha_{\text{grow}} = 2$
+\State Initialize $\stepSize \gets \stepSizeInit$, buffer $R \gets [\,]$, iteration counter $k \gets 0$
+\For{each update}
+    \State Compute descent direction $\updateAt{k}$
+    \State $s_k \gets \inner{\nabla f_k(\xAt{k})}{\updateAt{k} / \norm{\updateAt{k}}}$ \Comment{slope along the normalized direction}
+    \State $\xAt{k+1} \gets \xAt{k} + \stepSize \, \updateAt{k} / \norm{\updateAt{k}}$
+    \State $\rho_k \gets \left(f_k(\xAt{k}) - f_k(\xAt{k+1})\right) / \left(-\stepSize \, s_k\right)$
+    \State Append $\rho_k$ to $R$
+    \State $k \gets k + 1$
+    \If{$k \bmod K = 0$}
+        \State $\bar{\rho} \gets \text{median}(R)$
+        \If{$\bar{\rho} < \tau_{\text{lo}}$}
+            \State $\stepSize \gets \alpha_{\text{shrink}} \cdot \stepSize$
+        \ElsIf{$\bar{\rho} > \tau_{\text{hi}}$}
+            \State $\stepSize \gets \alpha_{\text{grow}} \cdot \stepSize$
+        \EndIf
+        \State $R \gets [\,]$
+    \EndIf
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\begin{algorithm}[H]
+\caption{Cauchy Point with Median Gain Ratio}
+\label{alg:cauchy-point-tr}
+\begin{algorithmic}[1]
+\State \textbf{Input:} (possibly stochastic) loss function $f$, initial point $\xAt{0}$, initial step size $\stepSizeInit$, window size $K$, thresholds $\tau_{\text{lo}} = 0.25$, $\tau_{\text{hi}} = 0.75$, factors $\alpha_{\text{shrink}} = 0.5$, $\alpha_{\text{grow}} = 2$
+\State Initialize $\stepSize \gets \stepSizeInit$, buffer $R \gets [\,]$, iteration counter $k \gets 0$
+\For{each update}
+    \State Compute descent direction $\updateAt{k}$ and normalize $\hat{u}_k \gets \updateAt{k} / \norm{\updateAt{k}}$
+    \State $s_k \gets \inner{\nabla f_k(\xAt{k})}{\hat{u}_k}$ \Comment{slope}
+    \State $c_k \gets \inner{\hat{u}_k}{B_k \hat{u}_k}$ \Comment{curvature}
+    \State $\tau_k \gets 1$ if $c_k \le 0$, else $\min(-s_k / (\stepSize \, c_k),\, 1)$ \Comment{Equation~\eqref{eq:cauchy_tau}}
+    \State $\xAt{k+1} \gets \xAt{k} + \tau_k \stepSize \, \hat{u}_k$
+    \State $\rho_k \gets \left(f_k(\xAt{k}) - f_k(\xAt{k+1})\right) / \left(-\tau_k \stepSize \, s_k - \tfrac{1}{2} \tau_k^2 \stepSize^2 c_k\right)$
+    \State Append $\rho_k$ to $R$
+    \State $k \gets k + 1$
+    \If{$k \bmod K = 0$}
+        \State $\bar{\rho} \gets \text{median}(R)$
+        \If{$\bar{\rho} < \tau_{\text{lo}}$}
+            \State $\stepSize \gets \alpha_{\text{shrink}} \cdot \stepSize$
+        \ElsIf{$\bar{\rho} > \tau_{\text{hi}}$}
+            \State $\stepSize \gets \alpha_{\text{grow}} \cdot \stepSize$
+        \EndIf
+        \State $R \gets [\,]$
+    \EndIf
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+\chapter{Additional Ablations}
+
+\section{Single-Step versus Median Gain-Ratio} \label{app_gain_ratio_ablation}
+\todo{Present the ablation comparing the traditional single-step gain-ratio (Equation~\eqref{eq:tr_ratio}) against the median gain-ratio over a window of $K$ updates introduced in GRASS (Algorithm~\ref{alg:grass}), applied to all trust-region-based methods examined in this work.}
 
 \end{document}
