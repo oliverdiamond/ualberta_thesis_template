@@ -617,7 +617,7 @@ In this section we introduce two first-order methods for adaptive step size in R
 
 \section{Parallel Argmin Line Search} \label{sec: pals}
 \todo{One concern I have is that PALS isnt actually that much better with adam in control, difference is bigger for rmsprop, and in the pred setting from neurips paper, but think its ok}
-We introduce a new algorithm that employs a parallel search to avoid sequential backtracking and common initialization heuristics \cite{vaswani2019painless,galli2023monotone}. % todo: footnote mentioning that PALS was developed by Samuel Neumann in joint work. 
+We introduce a new line search algorithm that employs a parallel search to avoid sequential backtracking and common initialization heuristics \cite{vaswani2019painless,galli2023monotone}. % todo: footnote mentioning that PALS was developed by Samuel Neumann in joint work. 
 This allows for use of a more effective selection criterion based on the step size that provides the greatest improvement in the objective.
 
 The primary obstacle to adopting line search methods is the sequential backtracking procedure. However, the backtracking procedure is in fact fully paralellizable. Using modern hardware accelerators, the entire step size search can be executed in parallel. This alters the design space: line search methods need not rely on conservative initializations or incremental heuristics for computational efficiency. Furthermore, methods can obtain an approximation of the local objective landscape. By searching over a sufficiently large set of step sizes, the algorithm can better capture the local geometry and can achieve greater progress.
@@ -671,12 +671,14 @@ We call this the \textit{Parallel Argmin Line Search} (PALS), with pseudocode gi
     \end{algorithmic}
     \end{algorithm}
 
-Note that the exponential moving average over the chosen step size may also be applied to traditional backtracking methods, which we do in this work to increase robustness to high variance gradient estimates in RL for all line search methods. % todo: make not run on. 
+Note that the PALS algorithm also makes use of an exponential moving average (EMA) over the chosen step size, which improves robustness to noisy gradient estimates by preventing drastic changes in the learning rate. This technique may also be applied to traditional backtracking methods. % todo: make not run on. 
 Pseudocode for the backtracking armijo linesearch defined in % local todo: ref to armijo linesearch background
-with EMA on the chosen step size is given below
+with EMA on the chosen step size is given below:
 
 \section{Gain-Ratio Adaptive Step Size} 
-Next we introduce a method for 
+Next we introduce a new adaptive step size method based on trust region: Gain-Ratio Adaptive Step Size (GRASS). Rather than adapting the radius of a strict trust region around the current parameters, GRASS uses the same gain-ratio heuristic to simply increase or decrease the step size directly. While traditional trust region methods can be thought of as normalizing the given update vector to unit length and then applying the step size % local todo: latex for tr radius 
+or % local todo: latex for tr radius times tau 
+in the case of the Cauchy point, GRASS simply removes the normalization step, preserving the magnitude of the update. Additionally, to improve stability, GRASS computes the median of the gain ratio over a window of $K$ updates before updating the step size.\footnote{Also note that one could alternatively update $\eta$ every step using a moving average of the gain ratio, however this may be counter-productive to the indented gains in stability and is not examined in this work.}
 
 \begin{algorithm}
 \caption{Gain-Ratio Adaptive Step Size (GRASS)} % Local TODO: make terms and style consistent and formatting consistent with the other pseudocode.
@@ -706,16 +708,19 @@ Next we introduce a method for
 \EndFor
 \end{algorithmic}
 \end{algorithm}
+This approach can be though of as increasing the step size if the current value of $\eta$ satisfies the Armijo condition for $c=$, while decreasing the step size if the condition is not satisfied for $c=$ % todo: compute values of c based on peudocode
+While conceptually similar to the stochastic line search methods with adaptive starting points presented in \cite{vaswani2019painless}, GRASS is primarily distinct for two reasons: % local todo: make this a latex list
+1. The gain-ratio heurstic for increasing the step size is averaged over many updates before any change is made, improving robustness to nosiy gradients
+2. Even if an update interval % local todo: symbol for update interval 
+of 1 were used, GRASS does not perform fully backtracking at each update until a step size is accepted, but rather simply shrinks the step by a constant factor, preventing drastic decreases in $\eta$ on individual steps. 
 
-\subsection{Gain-Ratio with a Second Order Model}
-Can be thought of as the Cauchy point with the trust region scaled by the update norm.
-% make sure to explain that the ratio is averaged but not the search, that is done per update
+Similarly to the EMA used in PALS, aggregating the gain-ratio over many updates before performing an adjustment can be done with any trust region method, not just GRASS. 
+To isolate for the effect of removing the implicit normalization step in trust region methods, we also present the median gain-ratio with a simple first-order trust region method based on \tocite{2026 Preprint that does simple first order TR in SL} and the Cauchy point in Algorithm _ and Algorithm _, respectively % todo: implement algorithms and add refs here. 
 
-\section{First-Order Trust Region with an Averaged Ratio}
-To isolate for the benefit of the gain-ratio mechanism, we also employ averaged statistics. However, an ablation using all trust region methods with individual updates rather than averaging 
+% Algorithm: First-Order Trust Region with Median Gain Ratio
 
-\section{The Cauchy Point with an Averaged Ratio}
-\todo{!Important Question for Adam!: Related to the Q above, I am now realizing that I think it makes more sense for this method to update every timestep rather than only update every n steps based on curvature for a single batch, which seems potentially bad. Should it update every step to be an exact baseline from the literature or average to be directly comparable with GRASS and make sure that GRASS is good because it doesn't normalize the gradient, rather than being good bc of the averaging of stats? Not sure what is best here. Maybe good to ablate as mentoned above}
+% Algorithm: Cauchy Point with Median Gain Ratio
+
 \section{Globalization Strategies with Momentum-Based Optimizers}
 As both line search and trust region rely on descent directions as input at each update, combining them with momentum-based optimizers that may produce ascent directions is non-trivial. For line search, the requirement $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$ disqualifies many popular optimizers, such as Adam \cite{kingma2015adam}. Letting $g_k = \nabla f_k(\xAt{k})$ and $\beta_1, \beta_2 > 0$, Adam computes $u_k = -A^{-1}_k m_k$ where $A_k^2 = \mathrm{diag}(\beta_2 g_{k-1} + (1 - \beta_2) g_k^2)$ is a diagonal preconditioner and $m_k = \beta_1 m_{k-1} + (1 - \beta_1) g_k$ is a momentum term. This momentum term causes difficulties since $\inner{\nabla f_k(\xAt{k})}{m_k}_{A_k^{-1}}$ is not guaranteed to be negative. Recently, \cite{vaswani2020adaptive} motivated a new way to combine Adam with line search methods by dropping $m_k$ in the Armijo condition when searching for a step size $\stepSizeAt{k}$:
 \begin{equation}
