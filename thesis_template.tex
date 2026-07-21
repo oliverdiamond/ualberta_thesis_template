@@ -558,22 +558,22 @@ where $c \in (0, 1)$ is a hyperparameter and $\inner{\nabla f_k(\xAt{k})}{\updat
 
 A backtracking procedure is used to find $\stepSizeAt{k}$ by evaluating an exponentially decaying sequence of candidate step sizes $\stepSizeAt{k}^{(i)} = \stepSizeInit \beta^i$ for $i = 0, \dots, B$, where $\stepSizeInit > 0$ is some initial step size and $\beta \in (0, 1)$ is a decay factor. The algorithm sets $\stepSizeAt{k} = \stepSizeAt{k}^{(i)}$ using the smallest $i$ satisfying Equation~\eqref{eq:armijo_condition}, typically falling back to $\stepSizeAt{k}^{(B)}$ if no candidate is accepted. The linear complexity of $B$ backtracking evaluations has motivated heuristics to optimize the starting point $\stepSizeInit$. A popular reset heuristic \cite{vaswani2019painless} initializes each iteration $k$ of the line search from $\stepSizeAt{k} \delta^{n/b}$, where $\delta > 1$, $n$ is the dataset size, and $b$ is the batch size.
 
-Despite its theoretical guarantees, the Armijo condition requires a monotonic decrease that can be restrictive, resulting in minuscule step sizes \cite{nocedal2006numerical}.
-To mitigate this, non-monotone line searches relax the requirement of a strict decrease at every iteration and instead simply require that progress be made overall
-\cite{zhang2004nonmonotone,galli2023monotone,fox2024nonmonotone,grippo1986nonmonotone,dai2002nonmonotone,huynh1993nonmonotone,ernesto2000nonmonotone}. This is typically accomplished by increasing the $f(\xAt{k})$ term in
-Equation~\eqref{eq:armijo_condition}. Non-monotone line searches often choose larger step sizes than Armijo line searches, potentially leading to flatter, more robust minima \cite{fox2024nonmonotone}.
-While many non-monotone conditions exist, in this work we examine one that requires progress over an exponential moving window of iterates \cite{zhang2004nonmonotone,galli2023monotone}:
-\begin{equation}
-    \begin{split}
-        f_k(\xAt{k} + \stepSizeAt{k} \updateAt{k}) &\le C_k + c \stepSizeAt{k} \inner{\nabla f_k(\xAt{k})}{\updateAt{k}}
-        \quad \text{where} \\
-            C_k = \max \left\{ \tilde C_k, f_k(x_k) \right\} \qquad
-            \tilde C_k &= \frac{\xi Q_k C_{k-1} + f_k(x_k)}{Q_{k+1}} \qquad
-            Q_{k + 1} = \xi Q_k + 1
-    \end{split}
-    \label{eq:nonmonotone_condition}
-\end{equation}
-where again $c \in (0, 1)$, $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$, and the recurrences are initialized with $Q_0 = 1$ and $C_0 = f_0(x_0)$. Here, $C_k$ is a bias-corrected exponential moving average of function values, except that when $f_k(\xAt{k}) > \tilde C_k$, the term $C_k = f_k(\xAt{k})$ subsumes the weight for the past function values.
+% Despite its theoretical guarantees, the Armijo condition requires a monotonic decrease that can be restrictive, resulting in minuscule step sizes \cite{nocedal2006numerical}.
+% To mitigate this, non-monotone line searches relax the requirement of a strict decrease at every iteration and instead simply require that progress be made overall
+% \cite{zhang2004nonmonotone,galli2023monotone,fox2024nonmonotone,grippo1986nonmonotone,dai2002nonmonotone,huynh1993nonmonotone,ernesto2000nonmonotone}. This is typically accomplished by increasing the $f(\xAt{k})$ term in
+% Equation~\eqref{eq:armijo_condition}. Non-monotone line searches often choose larger step sizes than Armijo line searches, potentially leading to flatter, more robust minima \cite{fox2024nonmonotone}.
+% While many non-monotone conditions exist, in this work we examine one that requires progress over an exponential moving window of iterates \cite{zhang2004nonmonotone,galli2023monotone}:
+% \begin{equation}
+%     \begin{split}
+%         f_k(\xAt{k} + \stepSizeAt{k} \updateAt{k}) &\le C_k + c \stepSizeAt{k} \inner{\nabla f_k(\xAt{k})}{\updateAt{k}}
+%         \quad \text{where} \\
+%             C_k = \max \left\{ \tilde C_k, f_k(x_k) \right\} \qquad
+%             \tilde C_k &= \frac{\xi Q_k C_{k-1} + f_k(x_k)}{Q_{k+1}} \qquad
+%             Q_{k + 1} = \xi Q_k + 1
+%     \end{split}
+%     \label{eq:nonmonotone_condition}
+% \end{equation}
+% where again $c \in (0, 1)$, $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$, and the recurrences are initialized with $Q_0 = 1$ and $C_0 = f_0(x_0)$. Here, $C_k$ is a bias-corrected exponential moving average of function values, except that when $f_k(\xAt{k}) > \tilde C_k$, the term $C_k = f_k(\xAt{k})$ subsumes the weight for the past function values.
 
 \subsection{Trust Region Methods}
 Trust region methods offer an alternative approach to globalization. Rather than fixing an update direction and searching for a step size along it, both the step size and the direction are chosen together. To accomplish this, they construct a local model of the objective and solve it within a bounded region around the current iterate. Like line search, trust region methods provide global convergence guarantees in the deterministic setting \cite{nocedal2006numerical}. Many variants of trust region have been examined in the stochastic setting \tocite{stochastic trust region refs}, and it was recently shown to converge under the same interpolation condition given in \ref{eq:interpolation} \tocite{new TR paper}. \todo{check with Chen that my understanding of this result is correct}. 
@@ -612,16 +612,17 @@ where
 The Cauchy point has a key benefit of being relatively inexpensive to compute compared to exact methods, as it does not require any matrix factorization. It also serves as a framework for combining trust region methods with modern first-order optimizers. When $B_k = 0$ the model is linear and $\tau_k = 1$, so the Cauchy point reduces to the full steepest-descent step scaled to the trust region boundary, $p_k^C = -\Delta_k \nabla f_k(\xAt{k}) / \norm{\nabla f_k(\xAt{k})}$. Replacing the gradient with any descent direction $\updateAt{k}$ yields the step $\Delta_k \updateAt{k} / \norm{\updateAt{k}}$.
 
 \chapter{Methods}
+\todo{!IMPORTANT! (Q for Adam): I actually think a big part of what makes GRASS good is the averaging of the gain ratio, but i havent ablated this, and i used it for all the baselines that we compare to as well (can be used with any TR method), which i feel should maybe be an ablation and not the default? I.e should the baselines just be exactly as in the lit and then we can have an ablation where they do the averaging too? To show that 1. the averaging is good and 2. GRASS is still better bc of its other components. Of course there is the posibility that averaging doesn't matter and what is really useful only the other components, not sure}
+In this section we introduce two first-order methods for adaptive step size in RL: Parallel Argmin Line Search (PALS) and Gain-Ratio Adaptive Step Size (GRASS). These approaches build upon backtracking line search and trust region methods, including a second-order GRASS variant based on the Cauchy point. We also introduce several independent modifications to stabilize the chosen step sizes in high-variance regimes like RL. We show that these modifications can also be applied with backtracking Armijo line search, as well as standard first-order trust region and the Cauchy point. 
 
 \section{Parallel Argmin Line Search} \label{sec: pals}
-We introduce a new algorithm that is more effective for RL, that uses a parallel search to avoid sequential backtracking and common initialization heuristics\cite{vaswani2019painless,galli2023monotone}, and allows for use of a more effective selection criterion based on the step size that minimizes the objective the most.
+\todo{One concern I have is that PALS isnt actually that much better with adam in control, difference is bigger for rmsprop, and in the pred setting from neurips paper, but think its ok}
+We introduce a new algorithm that employs a parallel search to avoid sequential backtracking and common initialization heuristics \cite{vaswani2019painless,galli2023monotone}. % todo: footnote mentioning that PALS was developed by Samuel Neumann in joint work. 
+This allows for use of a more effective selection criterion based on the step size that provides the greatest improvement in the objective.
 
-We propose a framework for integrating line search techniques into RL to adaptively determine step sizes for both value function approximation and policy optimization.
-As discussed, a primary hurdle to adopting line searches is the sequential backtracking procedure.
-One simple insight is that the backtracking procedure is in fact paralellizable.
-Using modern hardware accelerators, the entire step size search can be executed in parallel. This alters the design space: we no longer must rely on conservative initializations or incremental heuristics for computational efficiency. Instead, we can recover a panoptic view of the local objective landscape. By searching over a sufficiently large set of step sizes, the algorithm can better capture the local geometry and can achieve greater progress.
+The primary obstacle to adopting line search methods is the sequential backtracking procedure. However, the backtracking procedure is in fact fully paralellizable. Using modern hardware accelerators, the entire step size search can be executed in parallel. This alters the design space: line search methods need not rely on conservative initializations or incremental heuristics for computational efficiency. Furthermore, methods can obtain an approximation of the local objective landscape. By searching over a sufficiently large set of step sizes, the algorithm can better capture the local geometry and can achieve greater progress.
 
-Rather than accepting the first step size that satisfies the Armijo condition as is typical with sequential backtracking line searches, we propose a more aggressive selection strategy. We select the step size that most minimizes $f_k$ along $\updateAt{k}$ while still satisfying the stochastic Armijo condition:
+Rather than accepting the largest examined step size that satisfies the Armijo condition (as is typical with sequential backtracking line searches) we propose a more aggressive selection strategy. The method selects the step size that provides the greatest reduction in  $f_k$ along $\updateAt{k}$ while still satisfying the stochastic Armijo condition: % local todo: make sure this notation is consistent with the earlier chapters
 \begin{equation}\label{eq_armijo_sgd}
     \stepSizeAt{k} = \arg\min_{\stepSize \in \mathcal{H}_k} f_k(\xAt{k} + \eta \updateAt{k})
 \end{equation}
@@ -632,15 +633,8 @@ where $\mathcal{H}_k$ includes the smallest step size and the candidate step siz
   \cup \left\{ \eta_0 \beta^B \right\}
     \label{eq:min_search}
 \end{equation}
-We call this the \textit{Parallel Argmin Line Search} (PALS), with pseudocode in Algorithm~\ref{alg:argmin-armijo} in Appendix ~\ref{supp:algs}.
-Note that in our ablations we also tested a variant that uses the non-monotone condition, but found it to perform worse.
+We call this the \textit{Parallel Argmin Line Search} (PALS), with pseudocode given in Algorithm % local todo: ref to algo 
 
-The requirement $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$ disqualifies many popular optimizers, such as Adam \cite{kingma2015adam}. Letting $g_k = \nabla f_k(\xAt{k})$ and $\beta_1, \beta_2 > 0$, Adam computes $u_k = -A^{-1}_k m_k$ where $A_k^2 = \mathrm{diag}(\beta_2 g_{k-1} + (1 - \beta_2) g_k^2)$ is a diagonal preconditioner and $m_k = \beta_1 m_{k-1} + (1 - \beta_1) g_k$ is a momentum term. This momentum term causes difficulties since $\inner{\nabla f_k(\xAt{k})}{m_k}_{A_k^{-1}}$ is not guaranteed to be negative. Recently, \cite{vaswani2020adaptive} motivated a new way to combine Adam with line search methods by dropping $m_k$ in the Armijo condition when searching for a step size $\stepSizeAt{k}$:
-\begin{equation}
-    f_k(\xAt{k} - \stepSizeAt{k} A_k^{-1} \nabla f_k(\xAt{k})) \le f_k(\xAt{k}) - c \stepSizeAt{k} \norm{\nabla f_k(\xAt{k})}_{A_k^{-1}},
-    \label{eq:adam_armijo_condition}
-\end{equation}
-while still updating with $u_k = -A_k^{-1} m_k$. We adopt this approach when using PALS with Adam. Importantly, the entire line search remains parallelizable.
 
 \begin{algorithm}[h] % Local todo: make consistent with terminology and notation and formatting used in sec:adaptive % Local todo: add unbiased EMA applied the chosen step size produced by the line search. This is what is actually used in the update.
     \caption{Parallel Argmin Line Search (PALS)}
@@ -677,10 +671,15 @@ while still updating with $u_k = -A_k^{-1} m_k$. We adopt this approach when usi
     \end{algorithmic}
     \end{algorithm}
 
+Note that the exponential moving average over the chosen step size may also be applied to traditional backtracking methods, which we do in this work to increase robustness to high variance gradient estimates in RL for all line search methods. % todo: make not run on. 
+Pseudocode for the backtracking armijo linesearch defined in % local todo: ref to armijo linesearch background
+with EMA on the chosen step size is given below
 
-\section{Gain-Ratio Adaptive Step Size} % Local TODO: make terms and style consistent and formatting consistent with the other pseudocode.
+\section{Gain-Ratio Adaptive Step Size} 
+Next we introduce a method for 
+
 \begin{algorithm}
-\caption{Gain-Ratio Adaptive Step Size (GRASS)}
+\caption{Gain-Ratio Adaptive Step Size (GRASS)} % Local TODO: make terms and style consistent and formatting consistent with the other pseudocode.
 \begin{algorithmic}[1]
 \State \textbf{Input:} initial learning rate $\eta_0$, window size $K$, thresholds $\tau_{\text{lo}} = 0.25$, $\tau_{\text{hi}} = 0.75$; factors $\alpha_{\text{shrink}} = 0.5$, $\alpha_{\text{grow}} = 2$
 \State Initialize $\eta \gets \eta_0$, buffer $R \gets [\,]$, step counter $t \gets 0$
@@ -716,10 +715,15 @@ Can be thought of as the Cauchy point with the trust region scaled by the update
 To isolate for the benefit of the gain-ratio mechanism, we also employ averaged statistics. However, an ablation using all trust region methods with individual updates rather than averaging 
 
 \section{The Cauchy Point with an Averaged Ratio}
-\todo{!Important Question for Adam!: I am now realizing that I think it makes more sense for this method to update every timestep rather than only update every n steps based on curvature for a single batch, which seems potentially bad. (in the spirit of this being a baseline i think upating every step makes sense? not sure? I actually haven't tested updating ss every step with GRASS so don't know if it would help or hurt or do nothing). One can also use the current curvature to set the ss each step but only expand the TR every n steps based on average stats. The same question also goes for the first order baseline described in the previous section: Should it update every step to be an exact baseline from the lit or average to be directly comparable with GRASS and make sure that GRASS is good because it doesn't normalize the gradient, rather than being good bc of the averaging of stats? Not sure what is best here.}
+\todo{!Important Question for Adam!: Related to the Q above, I am now realizing that I think it makes more sense for this method to update every timestep rather than only update every n steps based on curvature for a single batch, which seems potentially bad. Should it update every step to be an exact baseline from the literature or average to be directly comparable with GRASS and make sure that GRASS is good because it doesn't normalize the gradient, rather than being good bc of the averaging of stats? Not sure what is best here. Maybe good to ablate as mentoned above}
 \section{Globalization Strategies with Momentum-Based Optimizers}
-As both line search and trust region rely on descent directions as input, combining them with momentum-based optimizers that may produce ascent directions is non-trivial. Several methods have been proposed for combining line search methods with momentum in supervised learning \tocite{citations}, however there remains no clear consensus regarding the most effective approach. Additonally, to the best of our knowledge, this issue has not been examined in RL nor with trust region methods \todo{confirm this}. Resolving this challenge is especially important in deep RL, where the Adam optimzier, which uses a bias-corrected form of Polyak momentum, is ubiquitous \tocite{citation}. To combine globalization strategies with the Adam in RL, we adopt an approach used for combining line search with Polyak momentum in \cite{vaswani2019painless}, whereby momentum is not used in the search direction but still used in the applied update. We introduce an analogous approach for trust region methods, whereby momentum is not applied when computing the gain-ratio or determining $\tau$ for the Cauchy point \todo{make sure tau is consistent with cauchy psuedocode} however momentum is still used in the applied update. 
-% todo: Simple general form pseudocode for this approach with adam and an adaptive step size method. Form should be the adam update vec without momentum is fed to the step size method and then it produces the lr, and then the update with momentum is applied. Note that for cauchy it is identifying lr and tau. I am not sure what the best way to account for this is in a clean way. 
+As both line search and trust region rely on descent directions as input at each update, combining them with momentum-based optimizers that may produce ascent directions is non-trivial. For line search, the requirement $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$ disqualifies many popular optimizers, such as Adam \cite{kingma2015adam}. Letting $g_k = \nabla f_k(\xAt{k})$ and $\beta_1, \beta_2 > 0$, Adam computes $u_k = -A^{-1}_k m_k$ where $A_k^2 = \mathrm{diag}(\beta_2 g_{k-1} + (1 - \beta_2) g_k^2)$ is a diagonal preconditioner and $m_k = \beta_1 m_{k-1} + (1 - \beta_1) g_k$ is a momentum term. This momentum term causes difficulties since $\inner{\nabla f_k(\xAt{k})}{m_k}_{A_k^{-1}}$ is not guaranteed to be negative. Recently, \cite{vaswani2020adaptive} motivated a new way to combine Adam with line search methods by dropping $m_k$ in the Armijo condition when searching for a step size $\stepSizeAt{k}$:
+\begin{equation}
+    f_k(\xAt{k} - \stepSizeAt{k} A_k^{-1} \nabla f_k(\xAt{k})) \le f_k(\xAt{k}) - c \stepSizeAt{k} \norm{\nabla f_k(\xAt{k})}_{A_k^{-1}},
+    \label{eq:adam_armijo_condition}
+\end{equation}
+while still updating with $u_k = -A_k^{-1} m_k$. We adopt this approach when using line search methods with Adam. Similarly, for trust region methods % todo: Analogus math for trust region methods (GRASS and first order and cauchy) i am not sure what the cleanest and most concise way to present this is given there are three TR methods. Also did we clarify enough that trust region methods need a descent direction to work in the background section such that this makes sense here?
+To the best of our knowledge, this issue has not been examined in RL nor with trust region methods \todo{confirm this}.
 \section{Globalization Strategies with Sharpness Aware Minimization}
 In the full-batch supervised setting, line search algorithms have been shown to sometimes select highly conservative step sizes and fail to reach the edge of stability (EOS) \cite{roulet2024stepping}, resulting in slow convergence to sharp, poor-performing local minima. %todo: Before this setence breifly explain EOS and why flatter minima is hypothesized to do better, with citation (just make it a \tocite{}). 
 However, the effect of loss landscape sharpness on the performance of globalization strategies it has not been studied in RL.
@@ -762,9 +766,9 @@ For the line search methods, the search is always started from $\stepSizeInit = 
 To reduce computational cost, DQN experiments in Atari are run with $B=10$ backtracking steps with decay factor of $0.2$, while in all other settings we use $B=30$ with decay factor $0.7$. % local todo: add latex for the decay factor to prev setence based on notation in background
 The decay factors are set such that the minimum candidate step sizes are approximately $1e-7$ and $2e-5$, respectively, which are both well below the tuned default values (see )% local todo: ref to performance section below
 for their respective settings, preventing implicit tuning of the chosen step size for these methods.  
-For the Armijo linesearch, we apply an EMA on the chosen step size as described for PALS in % local todo: ref to pals section
-, with decay rate %todo: latex for the symbol we used for this
-$= 0.99$ for both algorithms.
+For both PALS and the Armijo linesearch, we apply an EMA on the chosen step size as described in % local todo: ref to pals section
+with decay rate %todo: latex for the symbol we used for this
+$= 0.99$.
 When using SAM as described in  % local todo: ref to section
 we keep % local todo: latex for sam  
 constant across all experiments, using the recommended default value of $0.05$ \tocite{SAM paper}. 
@@ -838,7 +842,7 @@ To measure aggregate performance across an envrionment suite, for each environme
 
 % Atari 5 sam vs no sam (note increasing step size and how it makes performance worse which can be mitigated by higher increase threshold)
 
-\todo{Would like to have an ablation for all the trust region methods comparing per update changes in ss like the linesearch methods do vs what we have used in all the experiments thus far, that being averaging the gain-ratio over n steps and then only update ss every n steps. Maybe this goes in the appendix though}
+\todo{Would like to have an ablation for all the trust region methods comparing per update changes in ss like the linesearch methods do vs what we have used in all the experiments thus far, that being averaging the gain-ratio over n steps and then only update ss every n steps. Would also like to ablate the ema on ss chosen by linesearch methods. Maybe these go in appendix though}
 
 \chapter{Conclusion and Future Work}
 Popular environment suites used for benchmarking deep RL algorithms do not effectively demonstrate the need for adaptive step size methods. The best tuned step size is often the same across each environment, allowing for a single fixed step size to perform well across all MDPs. This does not reflect the complexity of diverse real-world applications \todo{citation}.
