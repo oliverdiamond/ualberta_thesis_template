@@ -714,11 +714,12 @@ While conceptually similar to the stochastic line search methods with adaptive s
 2. Even if an update interval % local todo: symbol for update interval 
 of 1 were used, GRASS does not perform fully backtracking at each update until a step size is accepted, but rather simply shrinks the step by a constant factor, preventing drastic decreases in $\eta$ on individual steps. 
 
+GRASS can also utilize second order information by identifying the Cauchy point along the raw update vector and then scaling the update by $\eta$, rather than first normalizing the update vector to length $\eta$. % todo: does this make sense / clear enough
+This approach, which we refer to as GRAS
+
 Similarly to the EMA used in PALS, aggregating the gain-ratio over many updates before performing an adjustment can be done with any trust region method, not just GRASS. 
-To isolate for the effect of removing the implicit normalization step in trust region methods, we also present the median gain-ratio with a simple first-order trust region method based on \tocite{2026 Preprint that does simple first order TR in SL} and the Cauchy point in Algorithm _ and Algorithm _, respectively % todo: implement algorithms and add refs here. 
-
+To isolate for the effect of removing the implicit normalization step in trust region methods, we also present the median gain-ratio with a simple first-order trust region method based on \tocite{2026 Preprint that does simple first order TR in SL} and the Cauchy point in Algorithm~?? and Algorithm~??, respectively. \todo{implement algorithms and add refs here} 
 % Algorithm: First-Order Trust Region with Median Gain Ratio
-
 % Algorithm: Cauchy Point with Median Gain Ratio
 
 \section{Globalization Strategies with Momentum-Based Optimizers}
@@ -758,15 +759,15 @@ Like the ALE, these envrionments all have high high-dimensional continuous state
 We examine a subset of five environments from the full Brax suite, including: Ant, HalfCheetah, Swimmer, Humanoid, and Walker2d.
 
 \section{Algorithms}
-We compare the performance of GRASS (with and without a second order model, which when used we denote as GRASS Cauchy) and PALS against the first-order trust region method outlined in % local todo: ref to section
-(henceforth refered to as simply Trust Region), the Cauchy point method (denoted TR Cauchy) described in % local todo: ref to section
-, the standard backtracking Armijo linesearch, and tuned fixed step size baselines.
+We compare the performance of GRASS, GRASS Cauchy, the first-order trust region method outlined in % local todo: ref to section
+(henceforth refered to as simply Trust Region), the Cauchy point method (denoted TR Cauchy), PALS, backtracking Armijo linesearch, and tuned fixed step size baselines.
 % Explaination of hypers for each method.
 GRASS and all the trust-region-based methods examined in this work share the same hyperparameters: % local todo: the two threshold and factor tuples from the grass pseudocode and the update interval 
-Across all experiments, for __ and __ we use standard values for from the classical optimization literature \cite{nocedal2006numerical}: and , respectively. % local todo: values for these hypers from the GRASS pseudocode
+Across all experiments, for ?? and ?? we use standard values for from the classical optimization literature \cite{nocedal2006numerical}: and , respectively. % local todo: values for these hypers from the GRASS pseudocode
 For % local todo: values for the update interval
 we use 1/4th % local todo: make latex for 1/4th
-of the target network update interval for DQN and 1/4th of the total updates performed after each data collection phase for PPO. 
+of the target network update interval for DQN and 1/4th of the total updates performed after each data collection phase for PPO. All the examined trust-region-based methods utilize the median gain-ratio introduced in GRASS. However, we present an ablation using the traditional sinlge-step gain-ratio with all methods in % local todo: ref a new appdix section for this
+
 For the line search methods, the search is always started from $\stepSizeInit = 1$ with sufficient decrease $c=0.1$ %local todo: check to make sure the notation is correct for c
 To reduce computational cost, DQN experiments in Atari are run with $B=10$ backtracking steps with decay factor of $0.2$, while in all other settings we use $B=30$ with decay factor $0.7$. % local todo: add latex for the decay factor to prev setence based on notation in background
 The decay factors are set such that the minimum candidate step sizes are approximately $1e-7$ and $2e-5$, respectively, which are both well below the tuned default values (see )% local todo: ref to performance section below
@@ -785,6 +786,7 @@ We examine all methods with PPO in continuous-action Classic Control and Brax, a
 With PPO, we select the step size separately for learning the parameterized policy and state-value network parameters %local todo: latex for these parameters from background % 
 % todo: make the above sentence more clear
 For both the actor and critic networks, we use the standard PPO MLP: two hidden layers of 64 units with tanh activations \cite{shengyi2022the37implementation}. For all adaptive methods, we use a larger batch size of 1024 to reduce the variance of the gradient estimates used in determining step size. To facilitate fair comparison, for fixed step sizes we use both standard batch size 64 and larger batch size 1024. All other hyperparameter and network architecture settings are set according to \cite{shengyi2022the37implementation}. 
+
 % DQN details
 With DQN, we use adaptive step size methods for learning the parameters of the action-value network % local todo: latex for the parameters consistent with background
 . For classic control, we use an MLP with two hidden layers of 128 and 80 units, respectively, and ReLU activations. For Atari, we the standard convolutional network introduced in \tocite{nature DQN}. Once again, for adaptive step size methods we use a larger batch size of 1024 in classic control and 512 in Atari, and we compare to fixed step sizes with both the same batch size and a more standard DQN batch size of $32$. For atari, all other algorithm hyperparameters match Dopamine baselines \tocite{Dopamine}, while for classic control they match the defaults from \tocite{PureJaxRL repo}. All PPO and DQN hyperparameters for all environment suites are specified in % local todo: ref hyper table with env suites, algos as rows (so the env suite is a big left-most row and the algo is two rows in the next column that evenly divide it, and then all columns after that are the hypers for each algo. All the info you need for the hyper tables should be available by examing these 4 configs: /Users/oliverdiamond/Desktop/alberta/research/linesearch_brax/experiments/exp114_thesis/dqn/atari/trust_region.json, /Users/oliverdiamond/Desktop/alberta/research/linesearch_brax/experiments/exp114_thesis/dqn/classic/trust_region.json, /Users/oliverdiamond/Desktop/alberta/research/linesearch_brax/experiments/exp114_thesis/ppo/classic/trust_region.json, /Users/oliverdiamond/Desktop/alberta/research/linesearch_brax/experiments/exp114_thesis/ppo/mujoco/env_batch_1/trust_region.json and these runner files: /Users/oliverdiamond/Desktop/alberta/research/linesearch_brax/src/train/ppo/ppo_continuous_action.py, /Users/oliverdiamond/Desktop/alberta/research/linesearch_brax/src/train/dqn/dqn_control.py, /Users/oliverdiamond/Desktop/alberta/research/linesearch_brax/src/train/dqn/dqn_control_atari_ckp.py. Note the optimization method and its hypers here are not relevant we only care about the hypers for the DQN and PPO algo for this table. 
