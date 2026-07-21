@@ -9,9 +9,14 @@
         "commandCenter.border": "#15202b99",
         "sash.hoverBorder": "#ff80de",
         "titleBar.activeBackground": "#ff4dd1",
-        "titleBar.activeForeground": "#15202b",
+        "titleBar.activeForeground": "#595959",
         "titleBar.inactiveBackground": "#ff4dd199",
-        "titleBar.inactiveForeground": "#15202b99"
+        "titleBar.inactiveForeground": "#15202b99",
+        "activityBarTop.activeBackground": "#ff80de",
+        "activityBarTop.background": "#ff80de",
+        "activityBarTop.foreground": "#15202b",
+        "activityBarTop.inactiveForeground": "#15202b99",
+        "commandCenter.foreground": "#595959"
     },
     "peacock.color": "#FF4DD1",
     "grammarly.selectors": [
