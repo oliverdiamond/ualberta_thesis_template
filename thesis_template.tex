@@ -641,10 +641,73 @@ The requirement $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$ disqualifies man
 \end{equation}
 while still updating with $u_k = -A_k^{-1} m_k$. We adopt this approach when using PALS with Adam. Importantly, the entire line search remains parallelizable.
 
+\begin{algorithm}[h] % todo: make consistent with terminology and notation and formatting used in sec:adaptive
+    \caption{Parallel Argmin Line Search}
+    \label{alg:argmin-armijo}
+    \begin{algorithmic}[1]
+        \Require (Possibly stochastic) Loss function $f: \mathbb{R}^n \to \mathbb{R}$,
+            Initial point $x_0 \in \mathbb{R}^n$,
+            $c \in (0, 1)$,
+            Initial step size $\stepSizeInit > 0$,
+            Contraction factor $\beta \in (0, 1)$,
+            Backtracking steps $B \in \mathbb{N}$,
+            Convergence tolerance $\epsilon > 0$
+    
+        \State Initialize iteration counter $k \gets 0$
+        \While{$\|\nabla f(x_k)\| > \epsilon$}
+            \State Compute descent direction $\update_k$ \Comment{e.g., $\update_k = -\nabla f(x_k)$}
+            
+            \State Set $\mathcal{H}_k = \left\{
+                \stepSize_k^{(i)} = \stepSizeInit \beta^{i} \mid i = 0, 1, \ldots, B \text{ and } f(x_k + \stepSize_k^{(i)} \update_k)
+                \le f(x_k) + \stepSize_k^{(i)} c \inner{\nabla f(x_k)}{\update_k}
+            \right\}$
+            
+            \If{$\mathcal{H}_k$ is empty}
+                \State $\stepSize_k^* = \stepSizeInit \beta^B$ \Comment{Fallback if Armijo condition is not met}
+            \Else
+                \State $\stepSize_k^* = \operatorname*{argmin}_{\eta \in \mathcal{H}_k} f(x_k + \eta \update_k)$
+            \EndIf
+            
+            \State Update point: $x_{k+1} \gets x_k + \stepSize_k^* \update_k$
+            \State Increment counter: $k \gets k + 1$
+        \EndWhile
+            
+        \State \Return $x_k$
+    \end{algorithmic}
+    \end{algorithm}
+
 \section{First-Order Trust Region}
 \todo{This is the new method that is very similar to mine I think is important to compare to, very simple first order TR}
 
-\section{Gain-Ratio Adaptive Step Size}
+\section{Gain-Ratio Adaptive Step Size} % TODO: make terms and style consistent and formatting consistent with the other pseudocode
+\begin{algorithm}
+\caption{Gain-Ratio Adaptive Step Size (GRASS)}
+\begin{algorithmic}[1]
+\State \textbf{Input:} initial learning rate $\eta_0$, window size $K$, thresholds $\tau_{\text{lo}} = 0.25$, $\tau_{\text{hi}} = 0.75$; factors $\alpha_{\text{shrink}} = 0.5$, $\alpha_{\text{grow}} = 2$
+\State Initialize $\eta \gets \eta_0$, buffer $R \gets [\,]$, step counter $t \gets 0$
+\For{each update}
+    \State Sample batch $B$
+    \State Compute gradient $g \gets \nabla_\theta L(\theta; B)$
+    \State Compute descent direction $u$
+    \State $\ell_{\text{before}} \gets L(\theta; B)$
+    \State $s \gets \langle u, g \rangle$ \Comment{slope}
+    \State $\theta \gets \theta + \eta \cdot u$ 
+    \State $\ell_{\text{after}} \gets L(\theta; B)$
+    \State $\rho \gets (\ell_{\text{before}} - \ell_{\text{after}}) \,/\, (-\eta \cdot s)$
+    \State Append $\rho$ to $R$
+    \State $t \gets t + 1$
+    \If{$t \bmod K = 0$}
+        \State $\bar{\rho} \gets \text{median}(R)$
+        \If{$\bar{\rho} < \tau_{\text{lo}}$}
+            \State $\eta \gets \alpha_{\text{shrink}} \cdot \eta$
+        \ElsIf{$\bar{\rho} > \tau_{\text{hi}}$}
+            \State $\eta \gets \alpha_{\text{grow}} \cdot \eta$
+        \EndIf
+        \State $R \gets [\,]$
+    \EndIf
+\EndFor
+\end{algorithmic}
+\end{algorithm}
 
 \subsection{Gain-Ratio with a Second Order Model}
 Can be thought of as the Cauchy point with the trust region scaled by the update norm. 
@@ -677,9 +740,17 @@ Can be thought of as the Cauchy point with the trust region scaled by the update
 % In this section we examine several key challenges that arise with globalization strategies in complex environments with high dimensional state and action spaces.
 
 \section{Large Batch Size} % todo: better name
+% DQN
 
+% PPO
 \section{Using Globalization Strategies with Momentum}
+% DQN
+
+% PPO
 \section{Sharpness Aware Minimization} % todo: better name
+% Qbert Sam vs no Sam
+
+% Atari 5 sam vs no sam (note increasing step size and how it makes performance worse which can be mitigated by higher increase threshold)
 
 
 \chapter{Conclusion and Future Work}
