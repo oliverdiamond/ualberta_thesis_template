@@ -859,13 +859,16 @@ once again GRASS and line search methods fall within an order of magnitude of th
 The surperior performance of GRASS to the Trust Region methods in this setting suggests that preserving the magnitude of the update rather than just utilzing the direction may be especially useful in these environments. It may also play an important role in the Gain-Ratio, as first and second order approximations of the loss are less likely to hold over longer distances (the update norms in this setting typically range from $10^1$ to $10^2$) \todo{do i need to show this}), making step size growth less rapid early in learning with GRASS, potentially avoiding instabilties.  % Opus todo: check this out and if you think its legit explaination lets introduce it in the DQN atari section above and then reference it again here. I''m actually not sure if this track or bites here but it might make sense for DQN. Also if we keep it make it more clear and concise and not a runon. 
 Lastly, the strong performance of PALS compared to regular backtracking may be attributed to selecting more conservative step sizes in the RL control setting, where stochastic estimates of non-stationary objectives can be high-variance. This is supported by the cosnistently smaller chosen critic step sizes for GRASS and PALS relative to Armijo, which holds across the suite as shown in % todo: ref to the appendix 
 
-\chapter{Ablations  in Complex Environments}
-In this chapter we characterize three challenges that arise when naively applying globalization strategies in complex environments with high dimensional state and action spaces, including: 
-We identify solutions for each of these challenges, some of which are general 
-\section{Sensitivity to Batch Size}
-% To examine the effect of batch size on the performance of the line search methods in the control setting, Figure \ref{fig:batch_size}(a) compares the mean return in Ant with batch size 1024 and 64 with RMSProp. Similar to what has been observed in supervised learning, a larger batch size greatly improves the control performance of all line search methods \cite{roulet2023interplay}, with nearly all failing to learn with small batch size. Figure \ref{fig:batch_size}(b) shows that with small batch size, the accepted step sizes can be larger with higher variance, particularly for the actor. This result holds for SGD and Adam as well.
+\chapter{Ablations in and Challenges Complex Environments}
+In this chapter we characterize several challenges that arise when naively applying globalization strategies in complex environments with high dimensional state and action spaces. We first present two ablations which characterize how these methods tend to select overly aggressive step sizes in RL when applied with standard small batch sizes and updates produced by momentum-based optimizers. % todo: make this more clear and concise and not a run on 
+We then examine using the per step gain ratio with trust region and GRASS methods, demonstrating that this also leads to step size instability and poor performance. 
+Lastly, we return to the finding that globalization strategies can select overly conservative step sizes in settings with sharp loss landscapes, examining SAM as a potential solution. % todo: think of better word that proneness % opus todo: I think its awkward that the first three are presented as ablations since we already use them in the dqn section before this, but then sam isnt used (becuase i think it flows better to not use sam initally and there isnt a clear case for using it.) so its an addition. Also not sure if better to move the sharpness discussion from DQN section here, what do you think is the best way to handle this? 
 
+\section{Sensitivity to Batch Size}
 % DQN
+To examine the effect of batch size on the performance of globalization strategies in RL, Figure ?a% todo: ref to figure
+compares the normalized performance of GRASS and PALS averaged across the Atari-5 with standard DQN batch size of 32 and the larger batch size of 512 utilized and the preceding experiments. Similar to what has been observed in SL, a larger batch size massively improves the control performance of both methods \cite{roulet2023interplay}, with both GRASS and PALS completely failing to learn with small batch size. Furthermore, figure % todo: ref fig b
+shows that with small batch size in Name This Game, the accepted step sizes are roughly 3 orders of magnitude larger than the tuned baseline and performance flatlines, a pattern that holds in the other environments as well \todo{for Adam: do i need to show this in appendix or ok just saying?}. Note that 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{figures/ablations/2_batch_size/batch_dqn_atari5_step__opt=adam.png}
@@ -874,6 +877,7 @@ We identify solutions for each of these challenges, some of which are general
 \end{figure}
 
 % PPO
+GRASS, GRASS Cauchy actually appear much more robust to this change than the other adaptive methods, achieving the stongest performance at batch size 64 and 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{figures/ablations/2_batch_size/batch_ppo_mujoco_step__opt=adam.png}
