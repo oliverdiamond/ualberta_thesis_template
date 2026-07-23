@@ -694,7 +694,7 @@ Next we introduce a new adaptive step size method based on trust region: Gain-Ra
 This approach can be thought of as increasing the step size if the current value of $\eta$ satisfies the Armijo condition for $c = \tau_{\text{hi}}$, while decreasing the step size if the condition is not satisfied for $c = \tau_{\text{lo}}$.
 While conceptually similar to the stochastic line search methods with adaptive starting points presented in \cite{vaswani2019painless}, GRASS is primarily distinct for two reasons. First, the gain-ratio heuristic for increasing the step size is averaged over many updates before any change is made, improving robustness to noisy gradients. Second, even if an update interval $K$ of 1 were used, GRASS does not perform full backtracking at each update until a step size is accepted, but rather simply shrinks the step by a constant factor, preventing drastic decreases in $\eta$ on individual steps.
 
-GRASS can also utilize second order information by identifying the Cauchy point along the raw update vector and then scaling its length by $\eta$, rather than first normalizing the update vector to unit length and then scaling by $\eta$. This approach, which we refer to as GRASS Cauchy
+\todo{I am not sure if this method is nessesary for inclusion, given that it doesn't do as well as grass in atari and does about the same elsewhere. We already have regular cauchy to compare against when using second order info. The main benefit of including is just to say: you dont need second order info with grass and infact second order info can can be actually harmfull in atari, which is interesting actually so maybe we want that} GRASS can also utilize second order information by identifying the Cauchy point along the raw update vector and then scaling its length by $\eta$, rather than first normalizing the update vector to unit length and then scaling by $\eta$. This approach, which we refer to as GRASS Cauchy
 
 Similarly to the EMA used in PALS, aggregating the gain-ratio over many updates before performing an adjustment can be done with any trust region method, not just GRASS.
 To isolate for the effect of removing the implicit normalization step in trust region methods, we also present the median gain-ratio with a simple first-order trust region method based on \tocite{2026 Preprint that does simple first order TR in SL} and the Cauchy point, given as Algorithm~\ref{alg:first-order-tr} and Algorithm~\ref{alg:cauchy-point-tr} in Appendix~\ref{app_algo_pseudocode}, respectively.
@@ -764,8 +764,7 @@ In this chapter we describe the empirical design used to evaluate the performanc
 
 \section{Environments}
 The first set of environments that we examine are from the classic control suite \tocite{citation}. These environments consist of low-dimensional continuous state spaces describing the position and velocity of a small mechanical system, with a continuous action controlling an applied force or torque that drives the system's dynamics.
-The classic control environments are defined for continuous action spaces, however their action space may be discretized by partitioning each action dimension into $n$ evenly spaced values spanning its range and taking the Cartesian product across all dimensions, yielding $n^d$ discrete actions for a $d$-dimensional continuous action space. Each discrete action is an index into this grid of points, which is mapped back to the corresponding continuous action vector before being passed to the underlying environment.
-Specifically, we examine variants of the Acrobot, Cartpole and Mountaincar environments implemented as modifications of the corresponding \texttt{gymnax} \tocite{gymnax} environments, with edits made to bring their dynamics more in line with those originally described by \cite{sutton1998introduction}; these edits are detailed in Appendix~\ref{app_classic_control_diffs}.
+While the classic control environments are traditionally defined with continuous action spaces, their action space may also be discretized for use with discrete-action algorithms like Q-learning. Specifically, we examine variants of the Acrobot, Cartpole and Mountaincar environments implemented as modifications of the corresponding \texttt{gymnax} \tocite{gymnax} environments, with edits made to bring their dynamics more in line with those originally described by \cite{sutton1998introduction}; these edits are detailed in Appendix~\ref{app_classic_control_diffs}.
 
 The second set of environments are taken from the Arcade Learning Environment (ALE) \tocite{ALE}. Unlike classic control, the ALE presents the agent with raw pixel observations of Atari 2600 games, yielding a much higher-dimensional state space. This makes learning an accurate value function or policy a substantially harder optimization problem than the low-dimensional classic control settings.
 The ALE has many configurable parameters controlling the environment dynamics. We borrow all environment settings from the Google Dopamine baselines \tocite{Dopamine, Revisiting rainbow}, including sticky actions for stochastic transitions, a minimal action space per game, a frameskip of 4 frames per timestep, and a framestack of the previous 4 greyscaled frames to compose the state. The full set of ALE environment implementation details are outlined in Appendix~\ref{app_ale_params}.
@@ -778,9 +777,7 @@ We examine a subset of five environments from the full Brax suite, including: An
 \section{Algorithms} \label{sec:algorithms}
 We compare the performance of GRASS, GRASS Cauchy, the first-order trust region method outlined in Section~\ref{sec:grass}
 (henceforth referred to as simply Trust Region), the Cauchy point method (denoted TR Cauchy), PALS, backtracking Armijo linesearch, and tuned fixed step size baselines.
-GRASS and all the trust-region-based methods examined in this work share the same hyperparameters: the thresholds $\tau_{\text{lo}}, \tau_{\text{hi}}$ and factors $\alpha_{\text{shrink}}, \alpha_{\text{grow}}$ from Algorithm~\ref{alg:grass}, and the update interval $K$.
-Across all experiments, for $(\tau_{\text{lo}}, \tau_{\text{hi}})$ and $(\alpha_{\text{shrink}}, \alpha_{\text{grow}})$ we use standard values from the classical optimization literature \cite{nocedal2006numerical}: $(0.25, 0.75)$ and $(0.5, 2)$, respectively.
-For $K$, we use $\nicefrac{1}{4}$ of the target network refresh interval $C$ for DQN and $\nicefrac{1}{4}$ of the total updates performed after each data collection phase for PPO. All the examined trust-region-based methods utilize the median gain-ratio introduced in GRASS. However, we present an ablation using the traditional single-step gain-ratio with all methods in Appendix~\ref{app_gain_ratio_ablation}.
+For trust-region-based methods, across all experiments, we use standard values from the classical optimization literature \cite{nocedal2006numerical} of $(\tau_{\text{lo}}, \tau_{\text{hi}}) = (0.25, 0.75)$ and $(\alpha_{\text{shrink}}, \alpha_{\text{grow}}) = (0.5, 2)$. We set $\eta_0$ to $1e-5$ in all experiments. For $K$, we use $\nicefrac{1}{4}$ of the target network refresh interval $C$ for DQN and $\nicefrac{1}{4}$ of the total updates performed after each data collection phase for PPO. All the examined trust-region-based methods utilize the median gain-ratio introduced in GRASS unless otherwise specified. We present an ablation comparing this approach against the traditional single-step gain-ratio in Appendix~\ref{app_gain_ratio_ablation}.
 
 For the line search methods, the search is always started from $\stepSizeInit = 1$ with sufficient decrease $c=0.1$.
 To reduce computational cost, DQN experiments in Atari are run with $B=10$ backtracking steps with decay factor $\beta=0.2$, while in all other settings we use $B=30$ with decay factor $\beta=0.7$.
@@ -788,7 +785,7 @@ The decay factors are set such that the minimum candidate step sizes are approxi
 For both PALS and the Armijo linesearch, we apply an EMA on the chosen step size as described in Section~\ref{sec: pals}, with decay rate $\zeta = 0.99$.
 When using SAM as described in Section~\ref{sec:sam}, we keep $\kappa$
 constant across all experiments, using the recommended default value of $0.05$ \tocite{SAM paper}. 
-None of the hyperparameter values given above were tuned for the examined environments, and they may be considered reasonable default values. 
+None of the hyperparameter values given above for trust region or line search methods were tuned, and they may all be considered reasonable default values. 
 
 % 
 We examine all methods with PPO in continuous-action Classic Control and Brax, and with DQN in discrete-action classic control and the Atari-5. 
@@ -799,8 +796,7 @@ For both the actor and critic networks, we use the standard PPO MLP: two hidden 
 % DQN details
 With DQN, we use adaptive step size methods for learning the parameters $\qparams$ of the action-value network. For classic control, we use an MLP with two hidden layers of 128 and 80 units, respectively, and ReLU activations. For Atari, we use the standard convolutional network introduced in \tocite{nature DQN}. Once again, for adaptive step size methods we use a larger batch size of 1024 in classic control and 512 in Atari, and we compare to fixed step sizes with both the same batch size and a more standard DQN batch size of $32$. For Atari, all other algorithm hyperparameters match Dopamine baselines \tocite{Dopamine}, while for classic control they match the defaults from \tocite{PureJaxRL repo}. All PPO and DQN hyperparameters for all environment suites are specified in Appendix~\ref{app_hyperparams}.
 
-All experiments described in the remaining chapters of this thesis
-employ all the examined step size selection methods in tandem with the Adam optimizer, however experiments with RMSProp and SGD are included in Appendices~\ref{app_dqn_control_classic}, \ref{app_dqn_control}, \ref{app_ppo_control_classic}, and \ref{app_ppo_control}.
+We use the Adam optimizer for all experiments examined in the following chapters, however we also include results with SGD and RMSProp in Appendix~\ref{app_additional_results}.
 When applied with Adam, all adaptive step size methods use the approach for handling momentum described in Section~\ref{sec:momentum}.
 Optimizer hyperparameters are set according to the Optax library defaults \tocite{optax}, open AI baselines \tocite{37 details, open ai baselines}, and Dopamine \tocite{dopamine} in classic control, Brax, and the Atari-5, respectively. Settings for each optimizer are reported alongside algorithm hyperparameters in Appendix~\ref{app_hyperparams}.
 When using the base optimizers with a fixed step size, we perform cross-environment-tuning \tocite{paper for this} to select the step size.
@@ -818,48 +814,105 @@ In Atari we use 3 seeds \todo{run at least 2 more seeds for all atari experiemnt
 where $M$ is the total number of episodes completed in the run, and $T_i$ and $G^{(i)}$ are the length and return of episode $i$, respectively.
 To measure aggregate performance across an environment suite, we first apply Winsorized Min-Max Normalization with $5^{\text{th}}$ and $95^{\text{th}}$ percentile bounds to the performance of all runs within each environment, then average within each method to obtain its mean normalized performance on that environment, and finally average across environments to obtain its overall mean normalized performance.
 
+% todo: make sure all the mentions of figure x in all the following chapters get converted to actual refs to the figure that it is discussing
 \chapter{Benchmarking Globalization Strategies Against Static Step Sizes}
-
+\todo{make sure to note the merits of PALS relative to regular linesearch}
+In this chapter, we examine the performance of all the examined adaptive methods with DQN and PPO. For DQN, we identify all adaptive methods perform well in the classic control suite, demonstrating that globalization strategies can serve as an effective means of automatic step size selection in deep RL. Moving to more complex environments, we find that GRASS greatly outperforms the other adaptive methods with DQN in Atari. However, GRASS still struggles relative to the tuned baseline with smaller batch size, as globalization stategies appear to exhibit several distinct failure modes in this setting. With PPO, we find that all methods perform similarly well in classic control, while GRASS and GRASS Cauchy are the best performing methods when used with PPO in Mujoco.
 \section{Adaptive Step Size with DQN}
 % Make sure to mention gain ratio doing well despite using way less compute
+We first examine the use of globalization strategies for adaptive step size with DQN in classic control. As shown in Figure \todo{add fig of single row with learning curve for each classic env} % todo: ref fig once I add
+, all the examined methods perform roughly equally in all three environments. This demonstrates that globalization strategies can match the performance of a tuned fixed step size with DQN. Figure \todo{add fig of acrobot step size} % todo: ref fig once i add
+shows the chosen step sizes for all methods in the Acrobot environment. We observe that chosen step sizes for GRASS, GRASS Cauchy and the line search methods all lie within an order of magnitude below the fixed step size baseline. Step sizes for standard Trust Region and TR Cauchy are much larger, as for these algorithms the step size for the raw update vector is effectively % todo: length of tr radius times 1/update vector norm. make sure notion consistent with math in background and methods chapters
+\todo{Q For Adam: If we wanted to make make everything on the same scale we could report norm of the displacement in weight space for each method instead, thoughts?}
+The larger step size for regular armijo relative to PALS reflects the bias of backtracking methods twoards larger step sizes, even when smaller ones may achieve equal or greater reductions in the objective. Plots of return and step size for all environments are given in appendix % todo: ref appendix
 
-% Classic Control 
+Turning to more complex environments, Figure todo{add fig of atari normalized bars} % todo: ref fig once i add 
+shows normalized performance across the Atari-5, where GRASS greatly outperformed all other adaptive step size methods. While GRASS performed better than Tuned-512, which uses the same batch size, all other adaptive methods failed to match this baseline. However, GRASS still performed worse on average than Tuned-32, suggesting that the implicit regularizaton afforded by smaller, noisier batch sizes may be key to strong performance in these envrionments. 
 
-% Atari
-% However, we do not observe this behavior with the Armijo line search in the online control setting, perhaps because the implicit regularization of stochastic updates may alleviate EOS undershooting \cite{roulet2024stepping}. In fact, the strong performance of PALS relative to regular backtracking may be attributed to selecting more conservative step sizes in the RL control setting, where stochastic estimates of non-stationary objectives can be high-variance.
+Compared to classic control, performance in the Atari-5 is much less uniform across methods and environments, as exhibited by the learning curves in Figure \todo{add fig of atari learning curves} % % todo: ref fig once i add 
+. For example, in Battle Zone, we observe that all methods except GRASS exhibit either a total failure or a clear collapse in return after some period of learning progress. In Figure ?a \todo{Plot of step size and q values in battle zone} % todo: add ref to plot once i put it in
+we observe these collapses in performance are correlated with steadily increasing step size, loss and Q-values. This finding suggests these methods may either be accelerating the effects of the deadly triad or entering a unique feedback loop whereby % Opus todo: what is your take here? I was going to say where they get noisey estimates of the loss with smooth gradients so they take large steps but those estiamtes of the loss are inaccurate so then the loss gets worse and then the cycle continues, does that make more sense than triad? i am not sure how to frame.
+. GRASS may not be affected by this issue becuase \todo{adam: i can see why the slower updates would help but if that were the case we wouldnt see such bad performance with regular TR bc i use it there too, so i am not sure what to say here, is it ok to just say its unclear?} % opus todo: once again what is your take here why might grass not be as affected?
+However, this phenomenon is not observed in Name This Game, where as shown in % todo: ref appendix with dqn atari curves
+we see a similar collapse in performance correlated with increasing step sizes but do not observe a corresponding trend in the Q-values or loss, suggesting that yet another mechanism may be behind the performance collapse of globalization methods in this environment (besides GRASS, which outperforms both baseline methods). % todo: make not a run on
+\todo{I have poured over tons of metrics but can't seem to figure out why we see this so clearly correlate with performance in battle zone but nothing is out of the ordinary in name this game, at least from what i can tell. Another set of eyes would be good.} % opus: I have provided a plot with lots of metrics at figures/dqn_learning_curves.png, let me know what you make of this 
+
+By contrast, all adaptive methods perform particularly poorly in Qbert, but examining Figure ?a \todo{add fig of step size and sharpness for qbert}% todo: add ref to env after i add 
+we observe that step sizes are roughly 2-4 orders of magnitude smaller than the tuned baselines, and roughly 1-2 orders of magnitude smaller than the chosen step sizes in the other Atari environments. In Figure ?b % \todo{add fig of step size and sharpness for qbert}% todo: add ref to env after i add 
+we see that performance in this environment is correlated with sharpness in the loss, with GRASS and both line search methods reaching sharpness roughly 3 orders of magnitude greater than the baselines. Plots of return, step size, and sharpness for all environmens are given in appendix % todo: ref appendix
+This suggests that as observed in the supervised learning, globalization strategies may be susceptible to overly conservative step sizes resulting in convergence to sharp, poorly-generalizing local minima. We also observe sharpness for the baseline methods in all Atari environments does appear to converge to roughly $2/\eta$, as observed for RMSProp in supervised learning \tocite{citation}. Yet, interestingly, these methods utilize the Adam optimizer, for which convergence to $3.8/\eta$ is expected \tocite{citation}.
+
+These results suggest that several unique failure modes exist across the examined methods, which may result in both overly conservative and aggressive step sizes. Nevertheless, the strong performance of GRASS relative to Tuned-512 and competitve performance with Tuned-32 in $3/5$ environments suggests that it remains a promissing approach for adaptive step size with DQN. 
+
 \section{Adaptive Step Size with PPO}
-
-% Classic Control 
-
-% MuJoCo
 % Figure \ref{fig:ppo_overall_bar} shows the return for all methods, with Adam and RMSProp over 3 million environment interactions. Results for SGD are shown in Appendix \ref{app_ppo_control}. We can see that overall PALS performs consistently well for the two optimizers, doing slightly worse than backtracking Armijo and a fixed step size with Adam but notably better than backtracking Armijo and a fixed step size with RMSProp.
-
-
+We now examine adaptive step size for PPO, beginning once again with the classic control suite. Similarly to DQN, Figure \todo{fig of return for the three envs} % todo: ref to fig once i put it in
+shows that all methods perform roughly equally well, matching the tuned baselines. Figure \todo{fig of step size in Acrobot} % todo: ref to fig once i put it in
+shows that chosen step sizes for linesearch methods and the GRASS variants lie roughly within an order of magnitude of the tuned step size
 % We also provide the learning curves in Figure \ref{fig:ppo_learning_curves_adam}, for a closer look.
 % PALS roughly matched or outperformed a fixed step size in 4 of 5 environments with Adam and all environments with RMSProp and SGD. Backtracking Armijo typically performed worse than a fixed step size for all three base optimizers, while backtracking non-monotone was typically much worse with Adam (where it selected larger critic step sizes than other methods) and better with RMSProp and SGD. Overall, PALS can reliably match the performance of a tuned baseline across diverse settings where standard backtracking approaches struggle.
 
+% However, we do not observe this behavior with the Armijo line search in the online control setting, perhaps because the implicit regularization of stochastic updates may alleviate EOS undershooting \cite{roulet2024stepping}.
 
+% the strong performance of PALS relative to regular backtracking may be attributed to selecting more conservative step sizes in the RL control setting, where stochastic estimates of non-stationary objectives can be high-variance.
 
-\chapter{Addressing Limitations of Globalization Strategies in Complex Environments}
-% In this section we examine several key challenges that arise with globalization strategies in complex environments with high dimensional state and action spaces.
-
+\chapter{Ablations  in Complex Environments}
+In this chapter we characterize three challenges that arise when naively applying globalization strategies in complex environments with high dimensional state and action spaces, including: 
+We identify solutions for each of these challenges, some of which are general 
 \section{Sensitivity to Batch Size}
 % To examine the effect of batch size on the performance of the line search methods in the control setting, Figure \ref{fig:batch_size}(a) compares the mean return in Ant with batch size 1024 and 64 with RMSProp. Similar to what has been observed in supervised learning, a larger batch size greatly improves the control performance of all line search methods \cite{roulet2023interplay}, with nearly all failing to learn with small batch size. Figure \ref{fig:batch_size}(b) shows that with small batch size, the accepted step sizes can be larger with higher variance, particularly for the actor. This result holds for SGD and Adam as well.
 
 % DQN
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/ablations/2_batch_size/batch_dqn_atari5_step__opt=adam.png}
+    \caption{Effect of batch size on DQN with Adam on Atari-5. \todo{Figure out what the best practice is for CI when normalizing across envs}}
+    \label{fig:batch_dqn_atari}
+\end{figure}
 
 % PPO
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/ablations/2_batch_size/batch_ppo_mujoco_step__opt=adam.png}
+    \caption{Effect of batch size on PPO with Adam on Brax MuJoCo.}
+    \label{fig:batch_ppo_mujoco}
+\end{figure}
 % One other interesting note is that PALS also improved robustness to the batch size choice. We obtained consistent performance across all settings with a fixed batch size of 1024 for PALS. This was not the case for a fixed step size.
 % PPO-64 achieved better performance than PPO-1024 and the line search methods in 3 of 5 environments, but it failed in Humanoid. By contrast, PALS achieved robust performance across all environments with a single batch size.
 
 \section{Using Globalization Strategies with Momentum}
 % DQN
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/ablations/3_adam_direction/adamdir_dqn_atari5_step__opt=adam.png}
+    \caption{Adam direction ablation for DQN on Atari-5.}
+    \label{fig:adamdir_dqn_atari}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/ablations/3_adam_direction/adamdir_ppo_mujoco_step__opt=adam.png}
+    \caption{Adam direction ablation for PPO on Brax MuJoCo.}
+    \label{fig:adamdir_ppo_mujoco}
+\end{figure}
 
 % PPO
 \section{Mitigating Sharp Minima with SAM}
 % Qbert Sam vs no Sam
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/ablations/1_sam/sam_qbert_step_sharpness__opt=adam.png}
+    \caption{SAM vs.\ no SAM on Qbert: step size and sharpness with Adam.}
+    \label{fig:sam_qbert}
+\end{figure}
 
 % Atari 5 sam vs no sam (note increasing step size and how it makes performance worse which can be mitigated by higher increase threshold)
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/ablations/1_sam/sam_atari5_return_step__opt=adam.png}
+    \caption{SAM vs.\ no SAM on Atari-5: return and step size with Adam.}
+    \label{fig:sam_atari5}
+\end{figure}
 
 \todo{Would like to have an ablation for all the trust region methods comparing per update changes in ss like the linesearch methods do vs what we have used in all the experiments thus far, that being averaging the gain-ratio over n steps and then only update ss every n steps. Would also like to ablate the ema on ss chosen by linesearch methods. Maybe these go in appendix though}
 
@@ -872,11 +925,38 @@ Popular environment suites used for benchmarking deep RL algorithms do not effec
 \bibliographystyle{IEEEtran}
 
 \appendix
-\chapter{Experiments with RMSProp and SGD}
-\section{DQN Control in Classic Control} \label{app_dqn_control_classic}
-\section{DQN Control in Atari} \label{app_dqn_control}
-\section{PPO Control in Classic Control} \label{app_ppo_control_classic}
-\section{PPO Control in MuJoCo} \label{app_ppo_control}
+\chapter{Additional Experiment Results} \label{app_additional_results}
+\section{DQN in Classic Control} \label{app_dqn_control_classic}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/performance/1_dqn_classic/dqn_classic_return_step__opt=adam.png}
+    \caption{Adaptive step size methods with Adam for DQN in Classic Control. Return curves averaged over 20 seeds.}
+    \label{fig:dqn_classic_adam}
+\end{figure}
+
+\section{DQN in Atari} \label{app_dqn_control}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/performance/2_dqn_atari/dqn_atari_return_step_sharpness.png}
+    \caption{DQN with Adam on Atari-5: return, step size, and sharpness ($\lambda_{\max}$) over learning.}
+    \label{fig:dqn_atari_adam}
+\end{figure}
+
+\section{PPO in Classic Control} \label{app_ppo_control_classic}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/performance/3_ppo_classic/ppo_classic_return_step__opt=adam.png}
+    \caption{PPO with Adam on Classic Control: return and step size over learning.}
+    \label{fig:ppo_classic_adam}
+\end{figure}
+
+\section{PPO in MuJoCo} \label{app_ppo_control}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/performance/4_ppo_mujoco/ppo_mujoco_return_step__opt=adam.png}
+    \caption{PPO with Adam on Brax MuJoCo: return and step size over learning.}
+    \label{fig:ppo_mujoco_adam}
+\end{figure}
 
 \chapter{Environment and Implementation Details}
 
@@ -1044,7 +1124,7 @@ Brax MuJoCo & PPO & SGD & 64, 1024 & $3\mathrm{e}{-2}$ \\
 \label{tab:tuned_n}
 \end{table}
 
-\chapter{Pseudocode for Additional Adaptive Step Size Methods} \label{app_algo_pseudocode}
+\chapter{Pseudocode for Adaptive Step Size Methods} \label{app_algo_pseudocode}
 This appendix contains pseudocode for the additional adaptive step size variants introduced in Chapter~\ref{sec: methods}. Algorithm~\ref{alg:armijo-ema} gives the backtracking Armijo line search with an EMA on the chosen step size (Section~\ref{sec: pals}). Algorithm~\ref{alg:first-order-tr} and Algorithm~\ref{alg:cauchy-point-tr} give the first-order trust region method and the Cauchy point method, respectively, each with the median gain-ratio update introduced in GRASS (Section~\ref{sec:grass}).
 
 \begin{algorithm}[H]
@@ -1130,6 +1210,20 @@ This appendix contains pseudocode for the additional adaptive step size variants
 \chapter{Additional Ablations}
 
 \section{Single-Step versus Median Gain-Ratio} \label{app_gain_ratio_ablation}
-\todo{Present the ablation comparing the traditional single-step gain-ratio (Equation~\eqref{eq:tr_ratio}) against the median gain-ratio over a window of $K$ updates introduced in GRASS (Algorithm~\ref{alg:grass}), applied to all trust-region-based methods examined in this work.}
+We compare the traditional single-step gain-ratio (Equation~\eqref{eq:tr_ratio}) against the median gain-ratio over a window of $K$ updates introduced in GRASS (Algorithm~\ref{alg:grass}), applied to all trust-region-based methods examined in this work. A gain-ratio window of $1$ corresponds to updating the step size after every update using the single-step ratio, while the larger window matches the $K$ used in the main experiments.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/ablations/4_gain_ratio_window/gain_ratio_window_dqn_atari_step.png}
+    \caption{Effect of gain-ratio window on DQN with Adam on Atari-5: normalized performance and step size.}
+    \label{fig:gain_ratio_window_dqn_atari}
+\end{figure}
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/ablations/4_gain_ratio_window/gain_ratio_window_ppo_mujoco_step.png}
+    \caption{Effect of gain-ratio window on PPO with Adam on Brax MuJoCo: normalized performance and step size.}
+    \label{fig:gain_ratio_window_ppo_mujoco}
+\end{figure}
 
 \end{document}
