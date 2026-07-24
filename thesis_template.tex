@@ -868,7 +868,10 @@ Lastly, we return to the finding that globalization strategies can select overly
 % DQN
 To examine the effect of batch size on the performance of globalization strategies in RL, Figure ?a% todo: ref to figure
 compares the normalized performance of GRASS and PALS averaged across the Atari-5 with standard DQN batch size of 32 and the larger batch size of 512 utilized and the preceding experiments. Similar to what has been observed in SL, a larger batch size massively improves the control performance of both methods \cite{roulet2023interplay}, with both GRASS and PALS completely failing to learn with small batch size. Furthermore, figure % todo: ref fig b
-shows that with small batch size in Name This Game, the accepted step sizes are roughly 3 orders of magnitude larger than the tuned baseline and performance flatlines, a pattern that holds in the other environments as well \todo{for Adam: do i need to show this in appendix or ok just saying?}. Note that 
+shows that with small batch size in Name This Game, the accepted step sizes are roughly 3 orders of magnitude larger than the tuned baseline and performance flatlines, a pattern that holds in the other environments as well \todo{for Adam: do i need to show this with a full small batch size plot grid in the appendix or ok just saying?}. At the larger batch size, step sizes are much closer to the fixed baseline, though GRASS appears to select more conservative step sizes approximately two orders of magnitude smaller than the baseline. % todo: make cleaner ie i dont want to repeat "the baseline" twice
+Examining the return in figure % todo ref to fig
+, we find that despite the improved performance with large batch size, PALS still suffers from performance degradation roughly a third of the way though the run, while GRASS outperforms both tuned baselines. This stark difference in step size and resulting performance between small and larger batch size suggests that adaptive methods may suffer from overfitting to the high variance % opus todo: make this clear and concise. confirm it makes sense. Not sure overfitting is the right word. 
+
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{figures/ablations/2_batch_size/batch_dqn_atari5_step__opt=adam.png}
