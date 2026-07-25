@@ -727,7 +727,7 @@ The step size $\stepSizeAt{k}$ is adapted via the gain ratio computed from $s_k$
 \end{equation}
 To the best of our knowledge, this issue has not been examined in RL nor with trust region methods \todo{confirm this}.
 \section{Globalization Strategies with Sharpness Aware Minimization} \label{sec:sam}
-Gradient descent with a sufficiently large step size has been observed to enter a regime known as the edge of stability (EOS), where the sharpness of the loss landscape stabilizes near a threshold determined by the step size rather than continuing to grow \cite{cohen2021gradient}. Sharpness here is defined as the maximum eigenvalue of the Hessian $\lambda_{\max}(\nabla^2 f(x))$, or the maximum eigenvalue of the preconditioned Hessian $\lambda_{\max}(A^{-1}\nabla^2 f(x))$ when using optimizers that employ a diagonal preconditioner $A$ such as RMSProp and Adam \cite{cohen2024adaptive}.
+Gradient descent with a sufficiently large step size has been observed to enter a regime known as the edge of stability (EOS), where the sharpness of the loss landscape stabilizes near a threshold determined by the step size rather than continuing to grow \cite{cohen2021gradient}. Sharpness here is defined as the maximum eigenvalue of the Hessian $\lambda_{\max}(\nabla^2 f(x))$, or the maximum eigenvalue of the preconditioned Hessian $\lambda_{\max}(A^{-1}\nabla^2 f(x))$ when using optimizers that employ a diagonal preconditioner $A$ such as RMSProp and Adam \cite{cohen2024adaptive}. % opus todo: clearly and conciesly explain why this is a measure of sharpness and why we define it differently when using preconditioner. 
 Reaching the EOS is typically desirable, as flatter regions of the loss landscape are hypothesized to generalize better than sharp ones \tocite{citation for flat minima generalization}. In the full-batch supervised setting, line search algorithms have been shown to sometimes select highly conservative step sizes and fail to reach the EOS \cite{roulet2024stepping}, resulting in slow convergence to sharp, poor-performing local minima.
 However, the effect of loss landscape sharpness on the performance of globalization strategies has not been studied in RL.
 
@@ -868,9 +868,13 @@ Lastly, we return to the finding that globalization strategies can select overly
 % DQN
 To examine the effect of batch size on the performance of globalization strategies in RL, Figure ?a% todo: ref to figure
 compares the normalized performance of GRASS and PALS averaged across the Atari-5 with standard DQN batch size of 32 and the larger batch size of 512 utilized and the preceding experiments. Similar to what has been observed in SL, a larger batch size massively improves the control performance of both methods \cite{roulet2023interplay}, with both GRASS and PALS completely failing to learn with small batch size. Furthermore, figure % todo: ref fig b
-shows that with small batch size in Name This Game, the accepted step sizes are roughly 3 orders of magnitude larger than the tuned baseline and performance flatlines, a pattern that holds in the other environments as well \todo{for Adam: do i need to show this with a full small batch size plot grid in the appendix or ok just saying?}. At the larger batch size, step sizes are much closer to the fixed baseline, though GRASS appears to select more conservative step sizes approximately two orders of magnitude smaller than the baseline. % todo: make cleaner ie i dont want to repeat "the baseline" twice
+shows that with small batch size in Name This Game, the accepted step sizes are roughly 3 orders of magnitude larger than the tuned baseline, and performance flatlines. This pattern holds in all environments, as shown in Appendix \todo{Grid of plots with large batch size in the appendix}. % todo: ref appendix
+At the larger batch size, step sizes are much closer to the fixed baseline, though GRASS appears to select more conservative step sizes approximately two orders of magnitude smaller than the baseline. % todo: make cleaner ie i dont want to repeat "the baseline" twice
 Examining the return in figure % todo ref to fig
-, we find that despite the improved performance with large batch size, PALS still suffers from performance degradation roughly a third of the way though the run, while GRASS outperforms both tuned baselines. This stark difference in step size and resulting performance between small and larger batch size suggests that adaptive methods may suffer from overfitting to the high variance % opus todo: make this clear and concise. confirm it makes sense. Not sure overfitting is the right word. 
+, we find that despite the improved performance with large batch size, PALS still suffers from performance degradation roughly a third of the way though the run, while GRASS outperforms both tuned baselines. 
+
+This stark difference in step size and resulting performance between small and larger batch size suggests that the loss produced by the smaller batch is much smoother / gradient holds over longer distance in parameter space becuase ... which results in choosing much larger steps on high variance estimates of the gradient, with catostrphic consequences. % opus todo: make this clear and concise. I am not sure why loss would be smoother/gradient holds longer (not even sure if that is the right way to describe that) is there a reason? Not sure if i am describing it right. 
+\todo{Nice to have: Plot comparing loss landscape for small vs large batch size}
 
 \begin{figure}[htbp]
     \centering
@@ -880,15 +884,17 @@ Examining the return in figure % todo ref to fig
 \end{figure}
 
 % PPO
-GRASS, GRASS Cauchy actually appear much more robust to this change than the other adaptive methods, achieving the stongest performance at batch size 64 and 
+Turning to PPO in Brax, we find that once again all adaptive methods perform much better with large batch size, as shown in Figure % tood: ref fig
+Figure % todo: ref fig
+shows actor and critic step sizes in Humanoid, where we observe that actor step sizes are much larger at batch size 64 for the line search methods (flatlining at their maximum value of 1) and basic trust region. By contrast, actor step size differs by less than an order of magnitude between batch size 62 and 1024 for GRASS, CRASS Cauchy and TR Cauchy, which may explain there relatively strong performance at the smaller batch size compared to the other adaptive methods. 
+Additioanlly, critic step size is relatively consistent between the two batch sizes for all adaptive methods. While the poor performance corresponding to large step size of 1 is unsuprising in these high dimesional control environment, small changes in actor learning rate corresponding to large differences in performance for GRASS reflects the sensitivity of PPO to actor step size. % todo: make last sentence not a run on and more clean and clear 
+
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{figures/ablations/2_batch_size/batch_ppo_mujoco_step__opt=adam.png}
     \caption{Effect of batch size on PPO with Adam on Brax MuJoCo.}
     \label{fig:batch_ppo_mujoco}
 \end{figure}
-% One other interesting note is that PALS also improved robustness to the batch size choice. We obtained consistent performance across all settings with a fixed batch size of 1024 for PALS. This was not the case for a fixed step size.
-% PPO-64 achieved better performance than PPO-1024 and the line search methods in 3 of 5 environments, but it failed in Humanoid. By contrast, PALS achieved robust performance across all environments with a single batch size.
 
 \section{Using Globalization Strategies with Momentum}
 % DQN
