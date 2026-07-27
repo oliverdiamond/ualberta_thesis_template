@@ -291,8 +291,8 @@ or when learning action values as
     \label{eq:msve_q}
 \end{equation}
 where $\stateDistribution$ is the on-policy state distribution introduced above.
-In the tabular setting, if $\dynamics$ and $\rewardFunction$ are known, this objective can be minimized by iteratively solving the system of Bellman equations in % todo: ref bellman eq from above
-via dynamic programming \cite{sutton1998introduction}.\todo{should I formally introduce DP? My initial intention was to avoid this for brevity but I ended up going in depth in other areas anyways}. When $\dynamics$ and $\rewardFunction$ are unknown, policy evaluation becomes an online stochastic optimization problem \todo{citation}, as algorithms must construct estimates of $\vfn$ and $\qfn$ from stochastic trajectories and then minimize the MSE. Once the update targets are obtained, any optimization algorithm may be employed to reduce the loss, however all pseudocode presented in the the next two sections uses stochastic gradient descent (SGD). 
+In the tabular setting, if $\dynamics$ and $\rewardFunction$ are known, this objective can be minimized by iteratively solving the systems of Bellman equations defined by Equations~\eqref{eq:bellman_v} or ~\eqref{eq:bellman_q}
+via dynamic programming \cite{sutton1998introduction}. When $\dynamics$ and $\rewardFunction$ are unknown, policy evaluation becomes an online stochastic optimization problem \todo{citation}, as algorithms must construct estimates of $\vfn$ and $\qfn$ from stochastic trajectories and then minimize the MSE. Once the update targets are obtained, any optimization algorithm may be employed to reduce the loss, however all pseudocode presented in the the next two sections uses stochastic gradient descent (SGD). 
 
 \subsection{Monte Carlo Methods}
 The simplest prediction algorithm is Monte Carlo policy evaluation, which uses the full return $G_t$ observed for each state $S_t$ in a trajectory as an update target. By definition, $G_t$ is an unbiased estimate of $\vfn(S_t)$ or $\qfn(S_t, A_t)$. Algorithm~\ref{alg:mc} gives the procedure for the state-value case. One limitation of Monte Carlo evaluation is that it requires a full trajectory of experience to construct the target, delaying all updates to value estimates until the end of an episode. Another key disadvantage is that the variance of the update target is high, which can slow convergence.
@@ -577,7 +577,7 @@ A backtracking procedure is used to find $\stepSizeAt{k}$ by evaluating an expon
 % \end{equation}
 % where again $c \in (0, 1)$, $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$, and the recurrences are initialized with $Q_0 = 1$ and $C_0 = f_0(x_0)$. Here, $C_k$ is a bias-corrected exponential moving average of function values, except that when $f_k(\xAt{k}) > \tilde C_k$, the term $C_k = f_k(\xAt{k})$ subsumes the weight for the past function values.
 
-\subsection{Trust Region Methods}
+\subsection{Trust Region Methods} \label{subsec:trust_region}
 Trust region methods offer an alternative approach to globalization. Rather than fixing an update direction and searching for a step size along it, both the step size and the direction are chosen together. To accomplish this, they construct a local model of the objective and solve it within a bounded region around the current iterate. Like line search, trust region methods provide global convergence guarantees in the deterministic setting \cite{nocedal2006numerical}. Many variants of trust region have been examined in the stochastic setting \tocite{stochastic trust region refs}, and it was recently shown to converge under the same interpolation condition given in \ref{eq:interpolation} \tocite{new TR paper}. \todo{check with Chen that my understanding of this result is correct}. 
 
 At iteration $k$, the trust region methods approximate the objective with quadratic model
@@ -697,11 +697,68 @@ While conceptually similar to the stochastic line search methods with adaptive s
 
 Similarly to the EMA used in PALS, aggregating the gain-ratio over many updates before performing an adjustment can be done with any trust region method, not just GRASS.
 To isolate for the effect of removing the implicit normalization step in trust region methods, we also test the median gain-ratio with a simple first-order trust region method, which like GRASS utilizes a first-order model with an arbitrary descent direction in place of $\nabla f_k(\xAt{k})$.
-% todo: move \ref{alg:first-order-tr} from appendix to here
 
-This same first-order trust-region approach has been used with standard SGD in supervised learning \tocite{2026 Preprint that does simple first order TR in SL} but not extended to work in tandem with arbitrary optimizers as described in % todo: ref trust region background section.
+\begin{algorithm}[H]
+\caption{First-Order Trust Region with Median Gain Ratio}
+\label{alg:first-order-tr}
+\begin{algorithmic}[1]
+\State \textbf{Input:} (possibly stochastic) loss function $f$, initial point $\xAt{0}$, initial step size $\stepSizeInit$, window size $K$, thresholds $\tau_{\text{lo}} = 0.25$, $\tau_{\text{hi}} = 0.75$, factors $\alpha_{\text{shrink}} = 0.5$, $\alpha_{\text{grow}} = 2$
+\State Initialize $\stepSize \gets \stepSizeInit$, buffer $R \gets [\,]$, iteration counter $k \gets 0$
+\For{each update}
+    \State Compute descent direction $\updateAt{k}$
+    \State $s_k \gets \inner{\nabla f_k(\xAt{k})}{\updateAt{k} / \norm{\updateAt{k}}}$ \Comment{slope along the normalized direction}
+    \State $\xAt{k+1} \gets \xAt{k} + \stepSize \, \updateAt{k} / \norm{\updateAt{k}}$
+    \State $\rho_k \gets \left(f_k(\xAt{k}) - f_k(\xAt{k+1})\right) / \left(-\stepSize \, s_k\right)$
+    \State Append $\rho_k$ to $R$
+    \State $k \gets k + 1$
+    \If{$k \bmod K = 0$}
+        \State $\bar{\rho} \gets \text{median}(R)$
+        \If{$\bar{\rho} < \tau_{\text{lo}}$}
+            \State $\stepSize \gets \alpha_{\text{shrink}} \cdot \stepSize$
+        \ElsIf{$\bar{\rho} > \tau_{\text{hi}}$}
+            \State $\stepSize \gets \alpha_{\text{grow}} \cdot \stepSize$
+        \EndIf
+        \State $R \gets [\,]$
+    \EndIf
+\EndFor
+\end{algorithmic}
+\end{algorithm}
 
-We can also apply the aggregated gain-ratio when using the traditional second-order Cauchy point method. Recall the trust region is only expanded when both the gain ratio is sufficiently large and the update $p_k$ lies at the boundary of the trust region. The second condition is trivially satisfied on every update when using a first-order model, but not with the second-order Cauchy point. Therefore, we only expand the trust region when both the aggregated gain-ratio is sufficiently large and $\tau_k=1$ for at least half the updates in the aggregation window. % todo: edit the pseudocode currently in the appendix for cauchy with the aggregated gain ratio reflect this and move the pseudocode here. 
+This same first-order trust-region approach has been used with standard SGD in supervised learning \tocite{2026 Preprint that does simple first order TR in SL} but not extended to work in tandem with arbitrary optimizers as described in Section~\ref{subsec:trust_region}.
+
+We can also apply the aggregated gain-ratio when using the traditional second-order Cauchy point method. Recall the trust region is only expanded when both the gain ratio is sufficiently large and the update $p_k$ lies at the boundary of the trust region. The second condition is trivially satisfied on every update when using a first-order model, but not with the second-order Cauchy point. Therefore, we only expand the trust region when both the aggregated gain-ratio is sufficiently large and $\tau_k=1$ for at least half the updates in the aggregation window.
+
+\begin{algorithm}[H]
+\caption{Cauchy Point with Median Gain Ratio}
+\label{alg:cauchy-point-tr}
+\begin{algorithmic}[1]
+\State \textbf{Input:} (possibly stochastic) loss function $f$, initial point $\xAt{0}$, initial step size $\stepSizeInit$, window size $K$, thresholds $\tau_{\text{lo}} = 0.25$, $\tau_{\text{hi}} = 0.75$, factors $\alpha_{\text{shrink}} = 0.5$, $\alpha_{\text{grow}} = 2$
+\State Initialize $\stepSize \gets \stepSizeInit$, buffer $R \gets [\,]$, boundary counter $n \gets 0$, iteration counter $k \gets 0$
+\For{each update}
+    \State Compute descent direction $\updateAt{k}$ and normalize $\hat{u}_k \gets \updateAt{k} / \norm{\updateAt{k}}$
+    \State $s_k \gets \inner{\nabla f_k(\xAt{k})}{\hat{u}_k}$ \Comment{slope}
+    \State $c_k \gets \inner{\hat{u}_k}{B_k \hat{u}_k}$ \Comment{curvature}
+    \State $\tau_k \gets 1$ if $c_k \le 0$, else $\min(-s_k / (\stepSize \, c_k),\, 1)$ \Comment{Equation~\eqref{eq:cauchy_tau}}
+    \If{$\tau_k = 1$}
+        \State $n \gets n + 1$ \Comment{count updates at the trust-region boundary}
+    \EndIf
+    \State $\xAt{k+1} \gets \xAt{k} + \tau_k \stepSize \, \hat{u}_k$
+    \State $\rho_k \gets \left(f_k(\xAt{k}) - f_k(\xAt{k+1})\right) / \left(-\tau_k \stepSize \, s_k - \tfrac{1}{2} \tau_k^2 \stepSize^2 c_k\right)$
+    \State Append $\rho_k$ to $R$
+    \State $k \gets k + 1$
+    \If{$k \bmod K = 0$}
+        \State $\bar{\rho} \gets \text{median}(R)$
+        \If{$\bar{\rho} < \tau_{\text{lo}}$}
+            \State $\stepSize \gets \alpha_{\text{shrink}} \cdot \stepSize$
+        \ElsIf{$\bar{\rho} > \tau_{\text{hi}}$ \textbf{and} $n \ge K / 2$}
+            \State $\stepSize \gets \alpha_{\text{grow}} \cdot \stepSize$
+        \EndIf
+        \State $R \gets [\,]$, $n \gets 0$
+    \EndIf
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
 
 \section{Globalization Strategies with Momentum-Based Optimizers} \label{sec:momentum}
 As both line search and trust region rely on descent directions as input at each update, combining them with momentum-based optimizers that may produce ascent directions is non-trivial. For line search, the requirement $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$ disqualifies many popular optimizers, such as Adam \cite{kingma2015adam}. Letting $g_k = \nabla f_k(\xAt{k})$ and $\beta_1, \beta_2 > 0$, Adam computes $u_k = -A^{-1}_k m_k$ where $A_k^2 = \mathrm{diag}(\beta_2 g_{k-1} + (1 - \beta_2) g_k^2)$ is a diagonal preconditioner and $m_k = \beta_1 m_{k-1} + (1 - \beta_1) g_k$ is a momentum term. This momentum term causes difficulties since $\inner{\nabla f_k(\xAt{k})}{m_k}_{A_k^{-1}}$ is not guaranteed to be negative. Recently, \cite{vaswani2020adaptive} motivated a new way to combine momentum-based optimizers with line search methods by dropping the momentum term from the Armijo condition. For stochastic gradient descent with Polyak or Nesterov momentum, they search for a step size $\stepSizeAt{k}$ satisfying
@@ -721,7 +778,7 @@ while still updating with $u_k = -A_k^{-1} m_k$. This is also the apporach used 
 Trust region methods face a related but distinct difficulty in that they depend on constructing the local model from a descent direction. Let $\hat{u}_k = -A_k^{-1} \nabla f_k(\xAt{k})$ denote the no-momentum direction and $u_k = -A_k^{-1} m_k$ the momentum direction, and define
 \begin{equation}
 \begin{aligned}
-    s_k &=
+    \bar{u}_k &=
     \begin{cases}
         \hat{u}_k & \text{for GRASS,} \\[4pt]
         \hat{u}_k / \norm{\hat{u}_k} & \text{for the first-order trust region and Cauchy point methods,}
@@ -733,8 +790,16 @@ Trust region methods face a related but distinct difficulty in that they depend 
     \end{cases}
 \end{aligned}
 \end{equation}
-The step size $\stepSizeAt{k}$ is adapted via the gain ratio computed from $s_k$, following Algorithm~\ref{alg:grass}, and the Cauchy point scaling is $\tau_k = 1$ for GRASS and the first-order trust region method, or is obtained by applying Equation~\eqref{eq:cauchy_tau} to $s_k$ in place of the gradient % todo: should this not be the squared gradient since s_k is the inner product of the grad and the update vec? confirm if this is correct
-for the standard Cauchy point method. The parameter update is then taken along the momentum direction:
+The step size $\stepSizeAt{k}$ is adapted via the gain ratio computed from $\bar{u}_k$, following Algorithm~\ref{alg:grass}, and the Cauchy point scaling is $\tau_k = 1$ for GRASS and the first-order trust region method, or, for the standard Cauchy point method, is given by
+\begin{equation}
+    \tau_k =
+    \begin{cases}
+        1 & \text{if } \inner{\bar{u}_k}{B_k \bar{u}_k} \le 0 \\[4pt]
+        \min\!\left( -\dfrac{\inner{\nabla f_k(\xAt{k})}{\bar{u}_k}}{\stepSizeAt{k} \inner{\bar{u}_k}{B_k \bar{u}_k}},\ 1 \right) & \text{otherwise,}
+    \end{cases}
+    \label{eq:cauchy_tau_momentum}
+\end{equation}
+which follows the same derivation as Equation~\eqref{eq:cauchy_tau}, using the slope and curvature along the unit direction $\bar{u}_k$ in place of those of the negative gradient direction. The parameter update is then taken along the momentum direction:
 \begin{equation}
     \xAt{k+1} = \xAt{k} + \tau_k \stepSizeAt{k}\, d_k.
     \label{eq:tr_momentum_update}
@@ -742,8 +807,7 @@ for the standard Cauchy point method. The parameter update is then taken along t
 To the best of our knowledge, this issue has not been examined in RL nor with trust region methods.
 \section{Globalization Strategies with Sharpness Aware Minimization} \label{sec:sam}
 Gradient descent with a sufficiently large step size has been observed to enter a regime known as the edge of stability (EOS), where the sharpness of the loss landscape stabilizes near a threshold determined by the step size rather than continuing to grow \cite{cohen2021gradient}. Sharpness here is defined as the maximum eigenvalue of the Hessian $\lambda_{\max}(\nabla^2 f(x))$, or the maximum eigenvalue of the preconditioned Hessian $\lambda_{\max}(A^{-1}\nabla^2 f(x))$ when using optimizers that employ a diagonal preconditioner $A$ such as RMSProp and Adam \cite{cohen2024adaptive}.
-The maximum eigenvalue measures the curvature of the objective along the direction in which it is most strongly curved, so a large $\lambda_{\max}$ means the loss rises steeply for a small displacement in at least one direction. The definition changes when applying the peconditioner % todo: math for the preconditioner
-to the gradient, as this is equiveelnt to optimizing the preconditioned objective % opus todo: latex math for preconditioned objective? % opus todo: make this a bit more specific and clean. Not sure if my interpretation is correct. Be concise and edit this sentence and add 1 setence max if you need to. 
+The maximum eigenvalue measures the curvature of the objective along the direction in which it is most strongly curved, so a large $\lambda_{\max}$ means the loss rises steeply for a small displacement in at least one direction. The definition changes when applying the peconditioner $A^{-1}$ to the gradient, as this is equiveelnt to optimizing the preconditioned objective % opus todo: latex math for preconditioned objective? % opus todo: make this a bit more specific and clean. Not sure if my interpretation is correct. Be concise and edit this sentence and add 1 setence max if you need to.
 
 Reaching the EOS is typically desirable, as flatter regions of the loss landscape are hypothesized to generalize better than sharp ones \tocite{citation for flat minima generalization}. In the full-batch supervised setting, line search algorithms have been shown to sometimes select highly conservative step sizes and fail to reach the EOS \cite{roulet2024stepping}, resulting in slow convergence to sharp, poor-performing local minima.
 However, the effect of loss landscape sharpness on the performance of globalization strategies has not been studied in RL.
@@ -794,7 +858,7 @@ We examine a subset of five environments from the full Brax suite, including: An
 \section{Algorithms} \label{sec:algorithms}
 We compare the performance of GRASS, the first-order trust region method outlined in Section~\ref{sec:grass}
 (henceforth referred to as simply Trust Region), the Cauchy point method, PALS, backtracking Armijo linesearch, and tuned fixed step size baselines.
-For trust-region-based methods, across all experiments, we use standard values from the classical optimization literature \cite{nocedal2006numerical} of $(\tau_{\text{lo}}, \tau_{\text{hi}}) = (0.25, 0.75)$ and $(\alpha_{\text{shrink}}, \alpha_{\text{grow}}) = (0.5, 2)$. We set $\eta_0$ to $1e-5$ in all experiments. For $K$, we use $\nicefrac{1}{4}$ of the target network refresh interval $C$ for DQN and $\nicefrac{1}{4}$ of the total updates performed after each data collection phase for PPO. All the examined trust-region-based methods utilize the median gain-ratio introduced in GRASS unless otherwise specified. We present an ablation comparing this approach against the traditional single-step gain-ratio in % todo: ref to section
+For trust-region-based methods, across all experiments, we use standard values from the classical optimization literature \cite{nocedal2006numerical} of $(\tau_{\text{lo}}, \tau_{\text{hi}}) = (0.25, 0.75)$ and $(\alpha_{\text{shrink}}, \alpha_{\text{grow}}) = (0.5, 2)$. We set $\eta_0$ to $1e-5$ in all experiments. For $K$, we use $\nicefrac{1}{4}$ of the target network refresh interval $C$ for DQN and $\nicefrac{1}{4}$ of the total updates performed after each data collection phase for PPO. All the examined trust-region-based methods utilize the median gain-ratio introduced in GRASS unless otherwise specified. We present an ablation comparing this approach against the traditional single-step gain-ratio in Section~\ref{app_gain_ratio_ablation}.
 
 For the line search methods, the search is always started from $\stepSizeInit = 1$ with sufficient decrease $c=0.1$.
 To reduce computational cost, DQN experiments in Atari are run with $B=10$ backtracking steps with decay factor $\beta=0.2$, while in all other settings we use $B=30$ with decay factor $\beta=0.7$.
@@ -871,8 +935,7 @@ we see that GRASS and PALS are consistently competitive with the best tuned base
 Figure \todo{plot of step size for ant} % todo: ref to fig once i put it in
 shows the actor and critic step sizes in Ant.
 Once again, we find that GRASS and line search methods fall within an order of magnitude of the baseline while the Trust Region methods have larger step sizes. Noteably, no methods exhibit the divergent nor overly conservative step sizes observed in some Atari environments with DQN. This pattern holds in all environments across the Brax suite as shown in Appendix \todo{ref appendix}. 
-We hypothesize this is primarily due to using PPO rather than a product of the Brax the environments for several reasons. First, unlike the single step Q-learning loss used by DQN, the critic targets in PPO are computed using $\lambda$-returns, which are less dependent on current value estimates, preventing inflation when the targets are reset after each data collecton phase. Second, PPO is an on-policy algorithm, implying that actions with inflated value estimates from the critic will actually be sampled by the learned policy % todo: latex math for this consistent with the background section
-and thus their value estimates will subsequently be tempered. Third, the clipped surrogate objective bounds the actual decrease in the policy loss produced by any individual update. All three of these properties mitigate the feedback loop described in Section~\ref{sec:dqn_results}. % todo: is it fair to characterize that section as describing a feedback loop? is that made clear enough in that section? 
+We hypothesize this is primarily due to using PPO rather than a product of the Brax the environments for several reasons. First, unlike the single step Q-learning loss used by DQN, the critic targets in PPO are computed using $\lambda$-returns, which are less dependent on current value estimates, preventing inflation when the targets are reset after each data collecton phase. Second, PPO is an on-policy algorithm, implying that actions with inflated value estimates from the critic will actually be sampled by the learned policy and thus their value estimates will subsequently be tempered. Third, the clipped surrogate objective bounds the actual decrease in the policy loss produced by any individual update. All three of these properties mitigate the feedback loop described in Section~\ref{sec:dqn_results}.
 Additonally, the comparatievly lower-dimensional proprioceptive observations in Brax likely pose a better conditioned optimization problem than learing from raw pixels.
 % opus todo: do all my explainations re why ppo doesnt have the issues dqn does given above make sense? 
 
@@ -915,7 +978,7 @@ shows actor and critic step sizes in Humanoid, where we observe that actor step 
 \end{figure}
 
 \section{Using Globalization Strategies with Momentum}
-We now examine the effect of removing the momentum term %todo: latex for momentum term consistent with the momentum section in the methods
+We now examine the effect of removing the momentum term $m_k$
 from step size selection when applying globalization strategies with Adam. Figure % todo: ref fig side a
 compares normalized performance in the Atari-5 for GRASS and PALS with and without this aproach. 
 \begin{figure}[htbp]
@@ -925,21 +988,22 @@ compares normalized performance in the Atari-5 for GRASS and PALS with and witho
     \label{fig:adamdir_dqn_atari}
 \end{figure}
 We observe that both methods fail entirely when applied naively on the Adam update vector. Examining Figure % todo ref fig side b
-we see that the chosen step sizes are roughly five orders of magnitude larger when step size selection is performed directly on the Adam direction with momentum % todo: math for this instead of writing it out (see no momentum mehtod section for what to put)
+we see that the chosen step sizes are roughly five orders of magnitude larger when step size selection is performed directly with $u_k$
 and both methods fail to learn. Interestingly, this is the opposite effect of what has been observed when combining globalization strategies and momentum-based optimizers in supervised learning, where frequent ascent directions result all step sizes being rejected \tocite{paper that does ls with amsgrad}. The inflated step size is not simply due to a difference in the magnitude of the update vector, as Figure \todo{add fig of adam update norm and slope for naive vs non-naive} % todo: ref fig
-shows the update norms are closely aligned with and without momentum. Examining the inner product of the gradient and the update % todo: latex for this consistent with the adaptive step size background and methods
-, which we refer to as slope, we observe the Adam updates % todo: latex math for this
-have roughly an order of magnitude larger slope as compared to when momentum is removed % todo: latex math for this update
-. Because the slope effectively controls how conservative both methods are in growing the step size, we hypothesize the momentum direction being misalligned with the gradient % todo: latex math for momentum direction and gradeint on current update
-actually allows for larger accepted step size due to the relaxed predicted decrease from the model in the gain-ratio and the sufficient decrease condition. However, for the observed difference to arise, it must hold that % todo: latex math for adam direction curvature being less than or equal to rmsprop direciton, can we just use second directional derivative here? i think that makes sense?
+shows the update norms are closely aligned with and without momentum. Examining the inner product of the gradient and the update, $s_k = \inner{\nabla f_k(\xAt{k})}{\updateAt{k}}$, which we refer to as slope, we observe that $u_k$
+has roughly an order of magnitude larger slope as compared to$\hat{u}_k$. Because the slope effectively controls how conservative both methods are in growing the step size, we hypothesize the momentum direction being misalligned with the gradient actually allows for larger accepted step size due to the relaxed predicted decrease from the model in the gain-ratio and the sufficient decrease condition. However, for the observed difference to arise, it should hold that the curvature of the loss along the momentum direction is no greater than along the no-momentum direction:
+\begin{equation*}
+    \inner{\frac{u_k}{\norm{u_k}}}{\nabla^2 f_k(\xAt{k}) \frac{u_k}{\norm{u_k}}} \le \inner{\frac{\hat{u}_k}{\norm{\hat{u}_k}}}{\nabla^2 f_k(\xAt{k}) \frac{\hat{u}_k}{\norm{\hat{u}_k}}},
+\end{equation*}
+since otherwise % opus todo: not sure if this is actually true or if this is the right way to frame this please help
 To examine this hypothesis, Figure  \todo{plot of loss along update direction}% todo: ref to fig 
-shows an approximation of the loss landscape on several individual batches sampled at different points in learning with PALS when using %todo: latex for adam update without momentum and adam udpate with momentum
+shows an approximation of the loss landscape on several individual batches sampled at different points in learning with PALS when using $\hat{u}_k$ (no momentum) and $u_k$ (includes momentum)
 to select step size. We construct these approximations using the evaluated loss for each candidate step size in the line search. % move this descrption up to the small vs large batch section where we first introduce this plot
-We find that
+We find that \todo{finish when plot is done}
 
-Turning PPO in Brax, we observe that performance is also greatly improved for all methods when using % todo: latex math no momentum direction 
-in place of % todo: latex math for momentum direction
-for selecting step size, as shown in Figure % todo: ref fig a 
+Turning PPO in Brax, we observe that performance is also greatly improved for all methods when using $\hat{u}_k$
+in place of $u_k$
+for selecting step size, as shown in Figure % todo: ref fig a
 . 
 \begin{figure}[htbp]
     \centering
@@ -948,11 +1012,11 @@ for selecting step size, as shown in Figure % todo: ref fig a
     \label{fig:adamdir_ppo_mujoco}
 \end{figure}
 In Figure \todo{get env besides humanoid to demonstrate this} % todo: ref fig b
-we see the actor step sizes for the adaptive methods are much larger than the tuned baseline when using % todo: math for regular update with momentum
-while they are within an order of magnitude with  % todo: math for regular update without momentum
+we see the actor step sizes for the adaptive methods are much larger than the tuned baseline when using $u_k$
+while they are within an order of magnitude with $\hat{u}_k$
 \todo{will need to change metric from LR to displacement to show this better for all methods, currently claim for LR incorrect. see note above re LR vs displacement}. We hypothesize this may occur for the same reasons described above with DQN, as Figure
 \todo{add fig of adam update norm and slope for naive vs non-naive} % todo: ref fig when i put it in
-shows that once again update norms are consistent between % todo: latex math for no momentum and momentum direction 
+shows that once again update norms are consistent between $\hat{u}_k$ and $u_k$
 while slope differs by \todo{complete}. \todo{plot of line search values along update direction}
 
 \section{Comparing the Median and Single-Step Gain-Ratio} \label{app_gain_ratio_ablation}
@@ -980,8 +1044,8 @@ The lesser importance of the aggregated gain ratio with PPO may be because batch
 The decreased impact between the two treatments for PPO is also likely influenced by the much smaller difference in $K$ as compared to DQN. 
 
 \section{Mitigating Sharp Minima with SAM}
-We now return to the finding in section % todo: ref section
-that globalization strategies can select overly conservative step sizes in some settings, moving into sharp regions of parameter space. We introduce a strategy for resolving this issue using Sharpness Aware Minimization in tandem with globalization strategies as described in section % todo: ref section
+We now return to the finding in Section~\ref{sec:dqn_results}
+that globalization strategies can select overly conservative step sizes in some environemnts with DQN, moving into sharp regions of parameter space. We introduce a strategy for resolving this issue using Sharpness Aware Minimization as described in Section~\ref{sec:sam}
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{figures/ablations/1_sam/sam_qbert_step_sharpness__opt=adam.png}
@@ -991,7 +1055,7 @@ that globalization strategies can select overly conservative step sizes in some 
 Figure % todo: ref fig
 compares the performance of PALS and GRASS in Qbert with and without SAM, an environment both methods previously failed to learn. When using SAM, the adaptive methods are competitive with the tuned baselines, whose performance is also slighly improved. Figure % todo: ref fig
 shows that when using SAM the chosen step sizes are much larger, within an order of magnitude below or above the tuned baseline. As a result, we see that sharpness is also decreased and now closely matches that of Tuned-32 for both the adaptive methods and Tuned-512. 
-However, the steady increase in step size for both methods is potentially concerning, as it resembles the pattern of the failure modes observed in %todo: ref dqn performance section
+However, the steady increase in step size for both methods is potentially concerning, as it resembles the pattern of the failure modes observed in Section~\ref{sec:dqn_results}
 where some methods suffered from performance degradation over the course of the run. 
 Indeed, examining Figure % todo: ref fig
 we see that while performance across the Atari-5 is improved for PALS and Tuned-512, performance for GRASS is unchanged due to worsened behavior in some environments, including Battle Zone, as shown in Figure % todo: ref fig
@@ -1002,9 +1066,9 @@ we see that while performance across the Atari-5 is improved for PALS and Tuned-
     \caption{SAM vs.\ no SAM on Atari-5: return and step size with Adam.}
     \label{fig:sam_atari5}
 \end{figure}
-In this environment we observe the steadily increasing step size and corresponding performance degradation as identified for other globalization strategies without SAM in % todo: ref section discussing DQN performacne
+In this environment we observe the steadily increasing step size and corresponding performance degradation as identified for other globalization strategies without SAM in Section~\ref{sec:dqn_results}.
 \todo{look at stats with sam to try to figure out why this is}
-To address this issue with GRASS, one can increase the growth threshold in the gain-ratio % todo: latex math for this from methods section
+To address this issue with GRASS, one can increase the growth threshold $\tau_{\text{hi}}$ in the gain-ratio
 as shown in figure % todo: ref fig
 which improves performance by making the method more conservative. However, we found that this change to be overfit to this environment suite, harming performance in classic control \todo{Adam: is it ok to just say this and not provide graphs?}. 
 Performance for tuned-512 is also greatly improved with SAM, suggesting the loss of the implicit regularization afforded by small batch size also hurts the performance of this method. Conversely, tuned-32 fails with SAM, \todo{Note for Adam: Think this is just because I didn't retune with SAM, would need to resweep SS in the atari-5 with SAM for both methods, not sure what to do here, should we run or just ablate for adaptive methods? The latter seems not great practice.}
@@ -1219,7 +1283,7 @@ Brax MuJoCo & PPO & SGD & 64, 1024 & $3\mathrm{e}{-2}$ \\
 \end{table}
 
 \chapter{Pseudocode for Adaptive Step Size Methods} \label{app_algo_pseudocode}
-This appendix contains pseudocode for the additional adaptive step size variants introduced in Chapter~\ref{sec: methods}. Algorithm~\ref{alg:armijo-ema} gives the backtracking Armijo line search with an EMA on the chosen step size (Section~\ref{sec: pals}). Algorithm~\ref{alg:first-order-tr} and Algorithm~\ref{alg:cauchy-point-tr} give the first-order trust region method and the Cauchy point method, respectively, each with the median gain-ratio update introduced in GRASS (Section~\ref{sec:grass}).
+This appendix contains additional pseudocode for the adaptive step size variants introduced in Chapter~\ref{sec: methods}. Algorithm~\ref{alg:armijo-ema} gives the backtracking Armijo line search with an EMA on the chosen step size (Section~\ref{sec: pals}).
 
 \begin{algorithm}[H]
     \caption{Backtracking Armijo Line Search with EMA}
@@ -1245,60 +1309,6 @@ This appendix contains pseudocode for the additional adaptive step size variants
             \State Increment counter: $k \gets k + 1$
         \EndFor
     \end{algorithmic}
-\end{algorithm}
-
-\begin{algorithm}[H]
-\caption{First-Order Trust Region with Median Gain Ratio}
-\label{alg:first-order-tr}
-\begin{algorithmic}[1]
-\State \textbf{Input:} (possibly stochastic) loss function $f$, initial point $\xAt{0}$, initial step size $\stepSizeInit$, window size $K$, thresholds $\tau_{\text{lo}} = 0.25$, $\tau_{\text{hi}} = 0.75$, factors $\alpha_{\text{shrink}} = 0.5$, $\alpha_{\text{grow}} = 2$
-\State Initialize $\stepSize \gets \stepSizeInit$, buffer $R \gets [\,]$, iteration counter $k \gets 0$
-\For{each update}
-    \State Compute descent direction $\updateAt{k}$
-    \State $s_k \gets \inner{\nabla f_k(\xAt{k})}{\updateAt{k} / \norm{\updateAt{k}}}$ \Comment{slope along the normalized direction}
-    \State $\xAt{k+1} \gets \xAt{k} + \stepSize \, \updateAt{k} / \norm{\updateAt{k}}$
-    \State $\rho_k \gets \left(f_k(\xAt{k}) - f_k(\xAt{k+1})\right) / \left(-\stepSize \, s_k\right)$
-    \State Append $\rho_k$ to $R$
-    \State $k \gets k + 1$
-    \If{$k \bmod K = 0$}
-        \State $\bar{\rho} \gets \text{median}(R)$
-        \If{$\bar{\rho} < \tau_{\text{lo}}$}
-            \State $\stepSize \gets \alpha_{\text{shrink}} \cdot \stepSize$
-        \ElsIf{$\bar{\rho} > \tau_{\text{hi}}$}
-            \State $\stepSize \gets \alpha_{\text{grow}} \cdot \stepSize$
-        \EndIf
-        \State $R \gets [\,]$
-    \EndIf
-\EndFor
-\end{algorithmic}
-\end{algorithm}
-
-\begin{algorithm}[H]
-\caption{Cauchy Point with Median Gain Ratio}
-\label{alg:cauchy-point-tr}
-\begin{algorithmic}[1]
-\State \textbf{Input:} (possibly stochastic) loss function $f$, initial point $\xAt{0}$, initial step size $\stepSizeInit$, window size $K$, thresholds $\tau_{\text{lo}} = 0.25$, $\tau_{\text{hi}} = 0.75$, factors $\alpha_{\text{shrink}} = 0.5$, $\alpha_{\text{grow}} = 2$
-\State Initialize $\stepSize \gets \stepSizeInit$, buffer $R \gets [\,]$, iteration counter $k \gets 0$
-\For{each update}
-    \State Compute descent direction $\updateAt{k}$ and normalize $\hat{u}_k \gets \updateAt{k} / \norm{\updateAt{k}}$
-    \State $s_k \gets \inner{\nabla f_k(\xAt{k})}{\hat{u}_k}$ \Comment{slope}
-    \State $c_k \gets \inner{\hat{u}_k}{B_k \hat{u}_k}$ \Comment{curvature}
-    \State $\tau_k \gets 1$ if $c_k \le 0$, else $\min(-s_k / (\stepSize \, c_k),\, 1)$ \Comment{Equation~\eqref{eq:cauchy_tau}}
-    \State $\xAt{k+1} \gets \xAt{k} + \tau_k \stepSize \, \hat{u}_k$
-    \State $\rho_k \gets \left(f_k(\xAt{k}) - f_k(\xAt{k+1})\right) / \left(-\tau_k \stepSize \, s_k - \tfrac{1}{2} \tau_k^2 \stepSize^2 c_k\right)$
-    \State Append $\rho_k$ to $R$
-    \State $k \gets k + 1$
-    \If{$k \bmod K = 0$}
-        \State $\bar{\rho} \gets \text{median}(R)$
-        \If{$\bar{\rho} < \tau_{\text{lo}}$}
-            \State $\stepSize \gets \alpha_{\text{shrink}} \cdot \stepSize$
-        \ElsIf{$\bar{\rho} > \tau_{\text{hi}}$}
-            \State $\stepSize \gets \alpha_{\text{grow}} \cdot \stepSize$
-        \EndIf
-        \State $R \gets [\,]$
-    \EndIf
-\EndFor
-\end{algorithmic}
 \end{algorithm}
 
 
