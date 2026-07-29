@@ -976,8 +976,7 @@ These findings demonstrate that several unique failure modes exist for globaliza
 \section{Adaptive Step Size with PPO}
 We now examine adaptive step size for PPO, beginning with the classic control suite. Similarly to DQN, Figure~\ref{fig:ppo_classic_adam} shows that all methods performed roughly equally well, matching the tuned baselines. Chosen step sizes for line search methods and GRASS lay roughly within an order of magnitude above the tuned step size, while those of standard trust region methods were higher, as they normalize the update vector.
 
-Moving to Brax, Figure~\ref{fig:ppo_mujoco_norm_perf} shows that GRASS and PALS performed on par with the tuned baselines across the suite.
-Backtracking Armijo nearly matched the baselines, while the standard trust region methods performed worse. Examining the learning curves in Figure~\ref{fig:ppo_mujoco_adam}, we found that GRASS and PALS were consistently competitive with the best tuned baseline in $4/5$ environments, while the backtracking Armijo and Trust Region methods sometimes performed much worse than the fixed-schedule baselines. Additionally, Tuned-64 achieved higher return than Tuned-1024 in $4/5$ environments, yet reached less than a third of its return in Humanoid. No fixed pairing of step size and batch size is therefore reliable across the whole suite. Note that we never observed a failure of this magnitude for GRASS or PALS, demonstrating that the benefit of adaptive step size selection in this setting is primarily reliability across environments rather than a large gain in any individual environment.
+Moving to Brax, Figure~\ref{fig:ppo_mujoco_norm_perf} shows that GRASS and PALS performed on par with the tuned baselines across the suite. Backtracking Armijo nearly matched the baselines, while the standard trust region methods performed worse. Examining the learning curves in Figure~\ref{fig:ppo_mujoco_adam}, we found that GRASS and PALS were consistently competitive with the best tuned baseline in $4/5$ environments, while the backtracking Armijo and Trust Region methods sometimes performed much worse than the fixed-schedule baselines. Additionally, Tuned-64 achieved higher return than Tuned-1024 in $4/5$ environments, yet reached less than a third of its return in Humanoid. No fixed pairing of step size and batch size is therefore reliable across the whole suite. Note that we never observed a failure of this magnitude for GRASS or PALS, demonstrating that the benefit of adaptive step size selection in this setting is primarily reliability across environments rather than a large gain in any individual environment.
 
 \begin{figure}[htbp]
     \centering
@@ -1128,6 +1127,14 @@ The improved performance of Tuned-512 with SAM supports the view that the loss o
 
 \appendix
 \chapter{Additional Experiment Results} \label{app_additional_results}
+\section{DQN in Classic Control} \label{app_dqn_control_classic}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/thesis/performance/1_dqn_classic/dqn_classic_return_step.png}
+    \caption[Adaptive step size methods with Adam for DQN in Classic Control.]{Adaptive step size methods with Adam for DQN in Classic Control. Return curves averaged over 20 seeds.}
+    \label{fig:dqn_classic_adam}
+\end{figure}
+
 \section{DQN in Atari} \label{app_dqn_control}
 \begin{figure}[htbp]
     \centering
@@ -1136,11 +1143,19 @@ The improved performance of Tuned-512 with SAM supports the view that the loss o
     \label{fig:dqn_atari_adam}
 \end{figure}
 
+\section{PPO in Classic Control} \label{app_ppo_control_classic}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/thesis/performance/3_ppo_classic/ppo_classic_return_step.png}
+    \caption{PPO with Adam in Classic Control. Return and step size.}
+    \label{fig:ppo_classic_adam}
+\end{figure}
+
 \section{PPO in MuJoCo} \label{app_ppo_control}
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{figures/thesis/performance/4_ppo_mujoco/ppo_mujoco_return_step.png}
-    \caption{PPO with Adam in Brax: return and step size during learning.}
+    \caption{PPO with Adam in Brax: return and step size.}
     \label{fig:ppo_mujoco_adam}
 \end{figure}
 
