@@ -1047,7 +1047,8 @@ shows that performance in Brax is relatively unchanged when using the single-ste
     \caption{Effect of gain-ratio window on PPO with Adam on Brax: normalized performance and step size.}
     \label{fig:gain_ratio_window_ppo_mujoco}
 \end{figure}
-We also observe that step sizes remain largely unaffected by this change, as demonstrated for Humanoid in Figure % todo: ref fig. 
+
+We also observe that step sizes remain largely unaffected by this change, as demonstrated for Humanoid in Figure % todo: ref to fig figures/thesis/ablations/4_gain_ratio_window/gain_ratio_window_ppo_mujoco_step.png right side b
 The lesser importance of the aggregated gain ratio with PPO is likely because the individual stochastic gradients are already serviceably low-variance. With PPO, a minibatch of $1024$ is drawn from a frozen, approximately on-policy dataset of $2048$ samples, so each $f_k$ contains half of the dataset used in the true objective, and successive batches may be very similar. This is closer to the deterministic setting for which the single-step gain-ratio was designed. With DQN, a batch of $512$ is drawn from a replay buffer of $1{,}000{,}000$ transitions collected under many past policies, so $f_k$ is dervied from a relatively smaller and diverse sample, with the resulting $\rho_k$ likely having higher variance. 
 The decreased impact between the two treatments for PPO is also likely influenced by the much smaller difference in $K$ as compared to DQN. 
 
@@ -1060,13 +1061,17 @@ that globalization strategies can select overly conservative step sizes in some 
     \caption{SAM vs.\ no SAM on Qbert: step size and sharpness with Adam.}
     \label{fig:sam_qbert}
 \end{figure}
-Figure % todo: ref fig
-compares the performance of PALS and GRASS in Qbert with and without SAM, an environment both methods previously failed to learn. When using SAM, the adaptive methods are competitive with the tuned baselines, whose performance is also slightly improved. Figure % todo: ref fig
-shows that when using SAM the chosen step sizes are much larger, within an order of magnitude below or above the tuned baseline. As a result, we see that sharpness is also decreased and now closely matches that of Tuned-32 for both the adaptive methods and Tuned-512. 
-However, the steady increase in step size for both methods is potentially concerning, as it resembles the pattern of the failure modes observed in Section~\ref{sec:dqn_results}
+Figure % todo: ref to fig figures/thesis/ablations/1_sam/sam_qbert_step_sharpness.png left side a
+compares the performance of PALS and GRASS in Qbert with and without SAM, an environment in which both methods previously failed to learn. When using SAM, the adaptive methods are competitive with the tuned baselines, whose performance is also slightly improved. Figure % todo: ref fig figures/thesis/ablations/1_sam/sam_qbert_step_sharpness.png left side b
+shows that when using SAM the chosen step sizes are much larger, within an order of magnitude below or above the tuned baseline. As a result, we see that sharpness is also decreased and now closely matches that of Tuned-32 for both the adaptive methods and Tuned-512. To confirm the effectiveness of SAM in this enviornment, Figure % todo: ref figures/thesis/ablations/1_sam/sam_qbert_stepsize_loss.png
+examines the loss along the update direction for a single update with PALS in Qbert.
+We find the loss landscape is indeed smoother when using SAM, allowing PALS to accept a step size with a larger resulting displacement. 
+
+The steady increase in step size when using SAM for both methods is concerning, as it resembles the pattern of the failure modes observed in Section~\ref{sec:dqn_results}
 where some methods suffered from performance degradation over the course of the run. 
-Indeed, examining Figure % todo: ref fig
-we see that while performance across the Atari-5 is improved for PALS and Tuned-512, performance for GRASS is unchanged due to worsened behavior in some environments, including Battle Zone, as shown in Figure % todo: ref fig
+Indeed, examining Figure % todo: ref fig figures/thesis/ablations/1_sam/sam_atari5_return_step.png left sida a
+we see that while performance across the Atari-5 is improved for PALS and Tuned-512, performance for GRASS is unchanged due to worsened behavior in some environments, as shown in Battle Zone in Figure % todo: ref fig figures/thesis/ablations/1_sam/sam_atari5_return_step.png right side b
+. 
 . 
 \begin{figure}[htbp]
     \centering
@@ -1074,16 +1079,14 @@ we see that while performance across the Atari-5 is improved for PALS and Tuned-
     \caption{SAM vs.\ no SAM on Atari-5: return and step size with Adam.}
     \label{fig:sam_atari5}
 \end{figure}
-In this environment we observe the steadily increasing step size and corresponding performance degradation as identified for other globalization strategies without SAM in Section~\ref{sec:dqn_results}.
-\todo{look at stats with sam to try to figure out why this is}
-To address this issue with GRASS, one can increase the growth threshold $T_{\text{hi}}$ in the gain-ratio
-as shown in figure % todo: ref fig
-which improves performance by making the method more conservative. However, we found that this change to be overfit to this environment suite, harming performance in classic control \todo{Adam: is it ok to just say this and not provide graphs?}. 
-Performance for tuned-512 is also greatly improved with SAM, suggesting the loss of the implicit regularization afforded by small batch size also hurts the performance of this method. Conversely, tuned-32 fails with SAM, \todo{Note for Adam: Think this is just because I didn't retune with SAM, would need to resweep SS in the atari-5 with SAM for both methods, not sure what to do here, should we run or just ablate for adaptive methods? The latter seems not great practice.}
+In this environment, we now observe the steadily increasing step size and corresponding performance degradation as seen with other globalization strategies in Section~\ref{sec:dqn_results}. This finding suggests that selecting step size based on the SAM objective can lead to aggressively large steps for the true objective. To address this issue with GRASS, one can increase the growth threshold $T_{\text{hi}}$ in the gain-ratio
+as shown in figure % todo: ref fig figures/thesis/ablations/1_sam/sam_atari5_return_step.png left sida a
+which improves performance by making the method more conservative. However, in practice we found that this change to be overfit to Atari, harming performance in classic control. 
 
+The improved performance of Tuned-512 with SAM supports that the loss of the implicit regularization afforded by small batch size is harmfull with DQN in Atari. Conversely, tuned-32 fails with SAM, \todo{Note for Adam: Think this could be because I didn't retune with SAM, currently running this before i make a comment}
 
 \chapter{Conclusion and Future Work}
-Popular environment suites used for benchmarking deep RL algorithms do not effectively demonstrate the need for adaptive step size methods. The best tuned step size is often the same across each environment, allowing for a single fixed step size to perform well across all MDPs. This does not reflect the complexity of diverse real-world applications \todo{citation}.
+% Popular environment suites used for benchmarking deep RL algorithms do not effectively demonstrate the need for adaptive step size methods. The best tuned step size is often the same across each environment, allowing for a single fixed step size to perform well across all MDPs. This does not reflect the complexity of diverse real-world applications \todo{citation}.
 
 
 \renewcommand{\bibname}{References}
