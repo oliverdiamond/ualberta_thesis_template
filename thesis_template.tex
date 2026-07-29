@@ -25,7 +25,8 @@
 \usepackage{fullpage}
 \usepackage{titling}
 \usepackage{graphicx}
-\usepackage{wrapfig}   %% <- for wrapfigure (used by moved control figures)
+\usepackage{wrapfig2}  %% <- for wrapfigure; wrapfig2 (not wrapfig) defers the
+                       %%    figure to the next page when too little room is left
 \usepackage{float}     %% <- for [H] float placement (used by appendix figures)
 \usepackage{nicefrac}
 \usepackage{xcolor}
@@ -59,6 +60,18 @@
 \usepackage{setspace}
 \usepackage{thmtools, thm-restate}
 \usepackage[nottoc]{tocbibind} % for adding list of figures to the table of contents
+\usepackage{caption}
+\captionsetup{font={stretch=1.0}} %% single-spaced captions (body text stays double-spaced)
+
+%% Float placement: allow floats to share a page with more text, so that
+%% large figures do not get pushed onto pages of their own.
+\renewcommand{\topfraction}{0.9}
+\renewcommand{\bottomfraction}{0.7}
+\renewcommand{\textfraction}{0.1}
+\renewcommand{\floatpagefraction}{0.85}
+\setcounter{topnumber}{3}
+\setcounter{bottomnumber}{2}
+\setcounter{totalnumber}{4}
 
 \setlength{\droptitle}{-6em}   % This is your set screw, for shifting up the title
 \renewcommand{\baselinestretch}{1.1}
@@ -902,24 +915,34 @@ In this chapter, we examine the performance of all the examined adaptive methods
 \section{Adaptive Step Size with DQN} \label{sec:dqn_results}
 We first examine the use of globalization strategies for adaptive step size with DQN in classic control. Figure~\ref{fig:dqn_classic_adam} shows curves for the return and step size $\stepSize$ across the suite. Note that we use $\stepSize$ and $\Delta_k$ of Section~\ref{subsec:trust_region} interchangeably, as $\Delta_k$ serves the role of the step size in the update for GRASS and in the normalized update for the first-order trust region method. Similarly, for the Cauchy point method we report step size as $\tau_k \Delta_k$. We found that all the examined methods performed roughly equally in all three environments. At the beginning of learning, step sizes for GRASS and the trust region methods quickly rose from their starting point $\trustRegionInit$ to a peak and then decayed thereafter. Step sizes for standard Trust Region and the Cauchy point were larger because the effective step size for these methods is actually $\Delta_k / \norm{\updateAt{k}}$ and $\tau_k \Delta_k / \norm{\updateAt{k}}$, respectively. \todo{Q For Adam: If we wanted to make everything on the same scale we could report norm of the displacement in weight space for each method instead, thoughts? We could also plot the technical step size applied to the raw update which would have a 1/norm(u) term but i did not log the unnormalized norm(u) so would have to rerun a bunch of stuff :/ } The line search methods exhibited a similar pattern of decay throughout the run. While the classic control environments are not particularly sensitive to step size \todo{cite}, these results highlight globalization strategies as a promising mechanism for automatic step size selection in deep RL.
 
-Turning to more complex environments, we found the results to be much more nuanced.
-Figure~\ref{fig:dqn_atari_norm_perf} shows normalized performance across the Atari-5, where GRASS greatly outperformed all other adaptive step size methods. While GRASS surpassed and PALS matched the Tuned-512 baseline, all other methods did significantly worse. However, both GRASS and PALS still performed worse on average than Tuned-32. Nevertheless, GRASS attained this comparatively strong performance using substantially less compute than the line search methods, as the median gain-ratio requires only two loss evaluations per update rather than the $B+1$ evaluations used by PALS.
-
-Examining the learning curves in Figure~\ref{fig:dqn_atari_return}, we found that performance in the Atari-5 was much less uniform across methods and environments than in the classic control domains. For example, in Battle Zone, all adaptive methods except GRASS exhibited either a total failure or a clear collapse in return after some period of learning progress. Figure~\ref{fig:dqn_atari_battle_zone} shows these collapses in performance were correlated with steadily increasing step size, loss, gradient norms, and Q-values.
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/thesis/performance/1_dqn_classic/dqn_classic_return_step.png}
+    \caption[Return and step size for DQN with Adam in classic control.]{Return and step size for DQN with Adam in classic control. All adaptive methods performed roughly equally well across the three environments, matching the tuned baselines.}
+    \label{fig:dqn_classic_adam}
+\end{figure}
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\textwidth]{figures/thesis/performance/2_dqn_atari/dqn_atari_norm_perf.png}
+    \includegraphics[width=0.45\textwidth]{figures/thesis/performance/2_dqn_atari/dqn_atari_norm_perf.png}
     \caption[Normalized performance of DQN with Adam on the Atari-5.]{Normalized performance of DQN with Adam on the Atari-5. GRASS greatly outperformed the other adaptive methods and surpassed Tuned-512, while PALS matched Tuned-512. Both GRASS and PALS failed to match Tuned-32.}
     \label{fig:dqn_atari_norm_perf}
 \end{figure}
 
+Turning to more complex environments, we found the results to be much more nuanced.
+Figure~\ref{fig:dqn_atari_norm_perf} shows normalized performance across the Atari-5, where GRASS greatly outperformed all other adaptive step size methods. While GRASS surpassed and PALS matched the Tuned-512 baseline, all other methods did significantly worse. However, both GRASS and PALS still performed worse on average than Tuned-32. Nevertheless, GRASS attained this comparatively strong performance using substantially less compute than the line search methods, as the median gain-ratio requires only two loss evaluations per update rather than the $B+1$ evaluations used by PALS.
+
+Examining the learning curves in Figure~\ref{fig:dqn_atari_adam}, we found that performance in the Atari-5 was much less uniform across methods and environments than in the classic control domains. For example, in Battle Zone, all adaptive methods except GRASS exhibited either a total failure or a clear collapse in return after some period of learning progress. Figure~\ref{fig:dqn_atari_battle_zone} shows these collapses in performance were correlated with steadily increasing step size, loss, gradient norms, and Q-values.
+
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\textwidth]{figures/thesis/performance/2_dqn_atari/dqn_atari_return.png}
-    \caption[Learning curves for DQN with Adam on the Atari-5.]{Learning curves for DQN with Adam on the Atari-5. Performance was far less uniform across methods and environments than in classic control, with all adaptive methods except GRASS exhibiting either total failure or a collapse in return in Battle Zone.}
-    \label{fig:dqn_atari_return}
+    \includegraphics[width=\textwidth]{figures/thesis/performance/2_dqn_atari/dqn_atari_return_step_sharpness.png}
+    \caption[Return, step size, and sharpness for DQN with Adam on the Atari-5.]{Return, step size, and preconditioned sharpness $\lambda_{\max}$ for DQN with Adam on the Atari-5. Performance was far less uniform across methods and environments than in classic control, with all adaptive methods except GRASS exhibiting either total failure or a collapse in return in Battle Zone and Name This Game.}
+    \label{fig:dqn_atari_adam}
 \end{figure}
+
+This finding suggests globalization strategies may be prone to accelerating the effects of the deadly triad. Both the Armijo condition and the gain-ratio only measure whether a step reduced the current objective by a sufficient fraction of the predicted decrease from a local model. Neither method accounts for the fact that larger steps may also inflate the Q-values from which the next targets are formed. When this occurs, the local model remains accurate and the step size continues to grow, which in turn accelerates the divergence of the Q-values. However, this divergence was not unique to the adaptive methods: Tuned-512, which uses an identical batch size, exhibited this same behavior at a slower rate, while Tuned-32 did not \todo{I think this may be because i didn't check low enough values for my grid search for tuned-512, running a few more values currently}. This suggests the implicit regularization afforded by smaller, noisier batches may help prevent aggressively fitting to inflated bootstrapped targets. This result is consistent with \tocite{Small batch deep reinforcement learning}, which also found smaller batch sizes to be more effective with DQN. The divergence exhibited by some globalization strategies in this environment may therefore not be inherent to these methods but rather an unfortunate consequence of their present incompatibility with smaller batch sizes, which we explore further in Section~\ref{sec:batch_size}.
+Additionally, we did not re-tune any of DQN's other hyperparameters besides the step size when using the larger batch size, which may exacerbate instabilities, as DQN is notoriously sensitive to its hyperparameters \todo{Citation}.
 
 \begin{figure}[htbp]
     \centering
@@ -927,9 +950,6 @@ Examining the learning curves in Figure~\ref{fig:dqn_atari_return}, we found tha
     \caption[Return, step size, loss, gradient norm, and Q-values for DQN in Battle Zone.]{Return, step size, loss, gradient norm, and Q-values for DQN with Adam in Battle Zone. The collapse in return for all adaptive methods except GRASS was correlated with steadily increasing step size, loss, gradient norms, and Q-values.}
     \label{fig:dqn_atari_battle_zone}
 \end{figure}
-
-This finding suggests globalization strategies may be prone to accelerating the effects of the deadly triad. Both the Armijo condition and the gain-ratio only measure whether a step reduced the current objective by a sufficient fraction of the predicted decrease from a local model. Neither method accounts for the fact that larger steps may also inflate the Q-values from which the next targets are formed. When this occurs, the local model remains accurate and the step size continues to grow, which in turn accelerates the divergence of the Q-values. However, this divergence was not unique to the adaptive methods: Tuned-512, which uses an identical batch size, exhibited this same behavior at a slower rate, while Tuned-32 did not \todo{I think this may be because i didn't check low enough values for my grid search for tuned-512, running a few more values currently}. This suggests the implicit regularization afforded by smaller, noisier batches may help prevent aggressively fitting to inflated bootstrapped targets. This result is consistent with \tocite{Small batch deep reinforcement learning}, which also found smaller batch sizes to be more effective with DQN. The divergence exhibited by some globalization strategies in this environment may therefore not be inherent to these methods but rather an unfortunate consequence of their present incompatibility with smaller batch sizes, which we explore further in Section~\ref{sec:batch_size}.
-Additionally, we did not re-tune any of DQN's other hyperparameters besides the step size when using the larger batch size, which may exacerbate instabilities, as DQN is notoriously sensitive to its hyperparameters \todo{Citation}.
 
 GRASS may be less afflicted by the feedback loop described above because its chosen step size stabilizes much earlier in the run as compared to the other adaptive methods. Because $\stepSize$ scales a unit vector rather than the raw update with standard trust region methods, the displacement per update is $\stepSize$ rather than $\stepSize \norm{\updateAt{k}}$. Starting from the same $\trustRegionInit$ of $1e-5$, we observed an initial growth period for both GRASS and the trust-region methods. However, for GRASS the median gain-ratio quickly fell below $T_{\text{hi}}$ and the step size then shrank accordingly. Since the effective displacement is smaller by a factor of $\norm{\updateAt{k}}$ for trust region methods, their step size continued to grow. Similarly, unlike GRASS, the examined line search methods adjust the step size each update and always consider the maximum step of $1$, making them more prone to the same divergent behavior. \todo{Q for Adam: not sure if this makes sense re regular TR being more susceptible to divergence bc there are more updates with larger ss early on}
 
@@ -961,28 +981,33 @@ GRASS may be less afflicted by the feedback loop described above because its cho
 % $T_{\text{lo}} = 0.25$.
 % ---------------------------------------------------------------------------
 
-Unlike in Battle Zone, examining Figure~\ref{fig:dqn_atari_qbert_step_sharpness}(a), we observed that for Qbert, step sizes were roughly $10^2$ to $10^4$ times smaller than the tuned baselines, and roughly 10 to 100 times smaller than the chosen step sizes in the other Atari environments (see Appendix Figure~\ref{fig:dqn_atari_adam} for the full comparison across environments). All adaptive methods performed poorly in this environment, and in Figure~\ref{fig:dqn_atari_qbert_step_sharpness}(b) we found that performance was correlated with sharpness in the loss, with GRASS and both line search methods reaching preconditioned sharpness roughly 1000 times greater than the baselines.
-
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=\textwidth]{figures/thesis/performance/2_dqn_atari/dqn_atari_qbert_step_sharpness.png}
-    \caption[\textbf{(a) Left:} Step size and \textbf{(b) Right:} sharpness for DQN on Qbert.]{\textbf{(a) Left:} Step size and \textbf{(b) Right:} preconditioned sharpness $\lambda_{\max}$ for DQN with Adam on Qbert. All adaptive methods selected step sizes far below the tuned baselines and reached far greater sharpness, resulting in poor performance.}
-    \label{fig:dqn_atari_qbert_step_sharpness}
-\end{figure}
+Unlike in Battle Zone, returning to Figure~\ref{fig:dqn_atari_adam}, we observed that for Qbert, step sizes were roughly $10^2$ to $10^4$ times smaller than the tuned baselines, and roughly 10 to 100 times smaller than the chosen step sizes in the other Atari environments. All adaptive methods performed poorly in this environment, and we found that performance was correlated with sharpness in the loss, with GRASS and both line search methods reaching preconditioned sharpness roughly 1000 times greater than the baselines.
 
 Step size and sharpness are inherently tied, as the EOS literature has shown that in non-convex optimization, parameters settle at a sharpness inversely proportional to the step size. While the adaptive methods operated in sharper regions of parameter space than the tuned baselines in all five environments, the pattern was most extreme in Qbert, where they also performed the worst overall. This finding is aligned with the failure mode reported for line search methods in full-batch supervised learning \cite{roulet2024stepping}, where they selected overly conservative step sizes and failed to reach the EOS. Additionally, we observed that sharpness for the baseline methods in all Atari environments appeared to converge to roughly $2/\eta$, as observed for RMSProp in supervised learning \tocite{citation}. Yet, interestingly, these methods utilize the Adam optimizer, for which convergence to $38/\eta$ is expected \tocite{citation}.
 
 These findings demonstrate that several unique failure modes exist for globalization strategies in deep RL, which may result in both overly conservative and aggressive step sizes depending on the environment. Nevertheless, the strong performance of GRASS relative to Tuned-512 and competitive performance with Tuned-32 in $3/5$ environments suggests that it remains a promising approach for adaptive step size with DQN. 
 \section{Adaptive Step Size with PPO}
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/thesis/performance/3_ppo_classic/ppo_classic_return_step.png}
+    \caption[Return and step size for PPO with Adam in classic control.]{Return and step size for PPO with Adam in classic control. All methods performed roughly equally well, matching the tuned baselines.}
+    \label{fig:ppo_classic_adam}
+\end{figure}
+\begin{wrapfigure}{R}{0.47\textwidth}
+    \centering
+    \includegraphics[width=0.45\textwidth]{figures/thesis/performance/4_ppo_mujoco/ppo_mujoco_norm_perf.png}
+    \caption[Normalized performance of PPO with Adam on Brax.]{Normalized performance of PPO with Adam on Brax. GRASS and PALS performed on par with the tuned baselines, while the standard Trust Region methods performed worse.}
+    \label{fig:ppo_mujoco_norm_perf}
+\end{wrapfigure}
 We now examine adaptive step size for PPO, beginning with the classic control suite. Similarly to DQN, Figure~\ref{fig:ppo_classic_adam} shows that all methods performed roughly equally well, matching the tuned baselines. Chosen step sizes for line search methods and GRASS lay roughly within an order of magnitude above the tuned step size, while those of standard trust region methods were higher, as they normalize the update vector.
 
 Moving to Brax, Figure~\ref{fig:ppo_mujoco_norm_perf} shows that GRASS and PALS performed on par with the tuned baselines across the suite. Backtracking Armijo nearly matched the baselines, while the standard trust region methods performed worse. Examining the learning curves in Figure~\ref{fig:ppo_mujoco_adam}, we found that GRASS and PALS were consistently competitive with the best tuned baseline in $4/5$ environments, while the backtracking Armijo and Trust Region methods sometimes performed much worse than the fixed-schedule baselines. Additionally, Tuned-64 achieved higher return than Tuned-1024 in $4/5$ environments, yet reached less than a third of its return in Humanoid. No fixed pairing of step size and batch size is therefore reliable across the whole suite. Note that we never observed a failure of this magnitude for GRASS or PALS, demonstrating that the benefit of adaptive step size selection in this setting is primarily reliability across environments rather than a large gain in any individual environment.
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\textwidth]{figures/thesis/performance/4_ppo_mujoco/ppo_mujoco_norm_perf.png}
-    \caption[Normalized performance of PPO with Adam on Brax.]{Normalized performance of PPO with Adam on Brax. GRASS and PALS performed on par with the tuned baselines, while Backtracking Armijo nearly matched them and the standard Trust Region methods performed worse.}
-    \label{fig:ppo_mujoco_norm_perf}
+    \includegraphics[width=\textwidth]{figures/thesis/performance/4_ppo_mujoco/ppo_mujoco_return_step.png}
+    \caption[Return and step size for PPO with Adam in Brax.]{Return and step size for PPO with Adam in Brax. GRASS and PALS were competitive with the best tuned baseline in $4/5$ environments, while the backtracking Armijo and Trust Region methods sometimes performed much worse than the fixed-schedule baselines.}
+    \label{fig:ppo_mujoco_adam}
 \end{figure}
 
 As with DQN, Figure~\ref{fig:ppo_mujoco_adam} shows that GRASS and line search methods fell within an order of magnitude of the baseline while the Trust Region methods had larger step sizes. Notably, no methods exhibited either the divergent or the overly conservative step sizes observed in some Atari environments with DQN. We hypothesize this is primarily due to using PPO rather than a product of the Brax environments, for several reasons. First, unlike the single-step Q-learning loss used by DQN, the critic targets in PPO are computed using $\lambda$-returns, which place most of their weight on observed rewards rather than current value estimates and are frozen for the duration of each update phase. Moreover, the critic target involves no maximization over actions, so it does not contain the inherent upward bias that can result in overestimation with DQN \todo{cite double q paper}. PPO is also on-policy, implying that states with inflated value estimates will actually be visited under the learned policy and their estimates subsequently corrected. These properties mitigate the feedback loop described in Section~\ref{sec:dqn_results}. Additionally, the clipped surrogate objective bounds the actual decrease in the policy loss produced by any individual update.
@@ -1059,7 +1084,7 @@ In Figure~\ref{fig:adamdir_ppo_mujoco}(b), we found that the actor step sizes fo
 
 \begin{figure}[htbp]
     \centering
-    \includegraphics[width=\textwidth]{figures/thesis/ablations/3_adam_direction/adamdir_ppo_humanoid_stepsize_loss.png}
+    \includegraphics[width=0.72\textwidth]{figures/thesis/ablations/3_adam_direction/adamdir_ppo_humanoid_stepsize_loss.png}
     \caption[Loss landscape approximation for the momentum ablation in Humanoid.]{Approximations of the actor and critic loss along the update direction for PALS in Humanoid, with and without momentum in step size selection. The larger critic step sizes with momentum were a product of smoother loss along the momentum direction, though the actor loss appeared unaffected.}
     \label{fig:adamdir_ppo_humanoid_loss}
 \end{figure}
@@ -1126,38 +1151,34 @@ The improved performance of Tuned-512 with SAM supports the view that the loss o
 \bibliographystyle{IEEEtran}
 
 \appendix
-\chapter{Additional Experiment Results} \label{app_additional_results}
-\section{DQN in Classic Control} \label{app_dqn_control_classic}
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=\textwidth]{figures/thesis/performance/1_dqn_classic/dqn_classic_return_step.png}
-    \caption[Adaptive step size methods with Adam for DQN in Classic Control.]{Adaptive step size methods with Adam for DQN in Classic Control. Return curves averaged over 20 seeds.}
-    \label{fig:dqn_classic_adam}
-\end{figure}
+\chapter{Pseudocode for Adaptive Step Size Methods} \label{app_algo_pseudocode}
+Algorithm~\ref{alg:armijo-ema} gives the backtracking Armijo line search with an EMA on the chosen step size introduced in Chapter~\ref{sec: methods}. 
 
-\section{DQN in Atari} \label{app_dqn_control}
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=\textwidth]{figures/thesis/performance/2_dqn_atari/dqn_atari_return_step_sharpness.png}
-    \caption{DQN with Adam on the Atari-5: return, step size, and preconditioned sharpness ($\lambda_{\max}$) during learning.}
-    \label{fig:dqn_atari_adam}
-\end{figure}
-
-\section{PPO in Classic Control} \label{app_ppo_control_classic}
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=\textwidth]{figures/thesis/performance/3_ppo_classic/ppo_classic_return_step.png}
-    \caption{PPO with Adam in Classic Control. Return and step size.}
-    \label{fig:ppo_classic_adam}
-\end{figure}
-
-\section{PPO in MuJoCo} \label{app_ppo_control}
-\begin{figure}[htbp]
-    \centering
-    \includegraphics[width=\textwidth]{figures/thesis/performance/4_ppo_mujoco/ppo_mujoco_return_step.png}
-    \caption{PPO with Adam in Brax: return and step size.}
-    \label{fig:ppo_mujoco_adam}
-\end{figure}
+\begin{algorithm}[H]
+    \caption{Backtracking Armijo Line Search with EMA}
+    \label{alg:armijo-ema}
+    \begin{algorithmic}[1]
+        \State \textbf{Input:} (possibly stochastic) loss function $f$, initial point $\xAt{0}$, sufficient decrease constant $c \in (0, 1)$, initial step size $\stepSizeInit > 0$, contraction factor $\beta \in (0, 1)$, backtracking steps $B \in \mathbb{N}$, EMA decay rate $\zeta \in (0, 1)$
+        \State Initialize iteration counter $k \gets 0$, EMA step size $\bar{\stepSize}_{-1} \gets \stepSizeInit$
+        \For{each update}
+            \State Compute descent direction $\updateAt{k}$ \Comment{e.g., $\updateAt{k} = -\nabla f_k(\xAt{k})$}
+            \State $i \gets 0$, accepted $\gets$ false
+            \While{$i \le B$ and \textbf{not} accepted}
+                \If{$f_k(\xAt{k} + \stepSizeInit \beta^i \updateAt{k}) \le f_k(\xAt{k}) + c\, \stepSizeInit \beta^i \inner{\nabla f_k(\xAt{k})}{\updateAt{k}}$}
+                    \State $\stepSizeAt{k}^* \gets \stepSizeInit \beta^i$, accepted $\gets$ true
+                \Else
+                    \State $i \gets i + 1$
+                \EndIf
+            \EndWhile
+            \If{\textbf{not} accepted}
+                \State $\stepSizeAt{k}^* \gets \stepSizeInit \beta^B$ \Comment{fallback if the Armijo condition is not met}
+            \EndIf
+            \State $\bar{\stepSize}_k \gets \zeta \bar{\stepSize}_{k-1} + (1 - \zeta) \stepSizeAt{k}^*$ \Comment{EMA over the chosen step size}
+            \State Update point: $\xAt{k+1} \gets \xAt{k} + \bar{\stepSize}_k \updateAt{k}$
+            \State Increment counter: $k \gets k + 1$
+        \EndFor
+    \end{algorithmic}
+\end{algorithm}
 
 \chapter{Environment and Implementation Details}
 
@@ -1324,35 +1345,5 @@ Brax & PPO & Adam & 64, 1024 & $3\mathrm{e}{-4}$ \\
 \caption[Selected fixed step size for each environment suite, algorithm, and optimizer.]{Selected fixed step size for each environment suite, algorithm, and optimizer. The step size was identical across the batch sizes examined in every setting. Atari-5 DQN was run only with Adam.}
 \label{tab:tuned_n}
 \end{table}
-
-\chapter{Pseudocode for Adaptive Step Size Methods} \label{app_algo_pseudocode}
-This appendix contains additional pseudocode for the adaptive step size variants introduced in Chapter~\ref{sec: methods}. Algorithm~\ref{alg:armijo-ema} gives the backtracking Armijo line search with an EMA on the chosen step size (Section~\ref{sec: pals}).
-
-\begin{algorithm}[H]
-    \caption{Backtracking Armijo Line Search with EMA}
-    \label{alg:armijo-ema}
-    \begin{algorithmic}[1]
-        \State \textbf{Input:} (possibly stochastic) loss function $f$, initial point $\xAt{0}$, sufficient decrease constant $c \in (0, 1)$, initial step size $\stepSizeInit > 0$, contraction factor $\beta \in (0, 1)$, backtracking steps $B \in \mathbb{N}$, EMA decay rate $\zeta \in (0, 1)$
-        \State Initialize iteration counter $k \gets 0$, EMA step size $\bar{\stepSize}_{-1} \gets \stepSizeInit$
-        \For{each update}
-            \State Compute descent direction $\updateAt{k}$ \Comment{e.g., $\updateAt{k} = -\nabla f_k(\xAt{k})$}
-            \State $i \gets 0$, accepted $\gets$ false
-            \While{$i \le B$ and \textbf{not} accepted}
-                \If{$f_k(\xAt{k} + \stepSizeInit \beta^i \updateAt{k}) \le f_k(\xAt{k}) + c\, \stepSizeInit \beta^i \inner{\nabla f_k(\xAt{k})}{\updateAt{k}}$}
-                    \State $\stepSizeAt{k}^* \gets \stepSizeInit \beta^i$, accepted $\gets$ true
-                \Else
-                    \State $i \gets i + 1$
-                \EndIf
-            \EndWhile
-            \If{\textbf{not} accepted}
-                \State $\stepSizeAt{k}^* \gets \stepSizeInit \beta^B$ \Comment{fallback if the Armijo condition is not met}
-            \EndIf
-            \State $\bar{\stepSize}_k \gets \zeta \bar{\stepSize}_{k-1} + (1 - \zeta) \stepSizeAt{k}^*$ \Comment{EMA over the chosen step size}
-            \State Update point: $\xAt{k+1} \gets \xAt{k} + \bar{\stepSize}_k \updateAt{k}$
-            \State Increment counter: $k \gets k + 1$
-        \EndFor
-    \end{algorithmic}
-\end{algorithm}
-
 
 \end{document}
