@@ -995,9 +995,9 @@ GRASS may be less afflicted by the feedback loop described above because its cho
 
 Unlike in Battle Zone, returning to Figure~\ref{fig:dqn_atari_adam}, we observed that for Qbert, step sizes were roughly $10^2$ to $10^4$ times smaller than the tuned baselines, and roughly 10 to 100 times smaller than the chosen step sizes in the other Atari environments. All adaptive methods performed poorly in this environment, and we found that performance was correlated with sharpness in the loss, with GRASS and both line search methods reaching preconditioned sharpness roughly 1000 times greater than the baselines.
 
-Step size and sharpness are inherently tied, as the EOS literature has shown that in non-convex optimization, parameters settle at a sharpness inversely proportional to the step size. While the adaptive methods operated in sharper regions of parameter space than the tuned baselines in all five environments, the pattern was most extreme in Qbert, where they also performed the worst overall. This finding is aligned with the failure mode reported for line search methods in full-batch supervised learning \cite{roulet2024stepping}, where they selected overly conservative step sizes and failed to reach the EOS. Additionally, we observed that sharpness for the baseline methods in all Atari environments appeared to converge to roughly $2/\eta$, as observed for RMSProp in supervised learning \tocite{citation}. Yet, interestingly, these methods utilize the Adam optimizer, for which convergence to $38/\eta$ is expected \tocite{citation}.
+Step size and sharpness are inherently tied, as the EOS literature has shown that in non-convex optimization, parameters settle at a sharpness inversely proportional to the step size. While the adaptive methods operated in sharper regions of parameter space than the tuned baselines in all five environments, the pattern was most extreme in Qbert, where they also performed the worst overall. This finding is aligned with the failure mode reported for line search methods in full-batch supervised learning \cite{roulet2024stepping}, where they selected overly conservative step sizes and failed to reach the EOS. Additionally, we observed that sharpness for Tuned-32 in all Atari environments appeared to converge to roughly $2/\eta$, as observed for RMSProp in supervised learning \tocite{citation}. Yet, interestingly, Tuned-32 uses the Adam optimizer, for which convergence to $38/\eta$ is expected \tocite{citation}.
 
-These findings demonstrate that several unique failure modes exist for globalization strategies in deep RL, which may result in both overly conservative and aggressive step sizes depending on the environment. Nevertheless, the strong performance of GRASS relative to Tuned-512 and competitive performance with Tuned-32 in $3/5$ environments suggests that it remains a promising approach for adaptive step size with DQN. 
+These findings demonstrate that several unique failure modes exist for globalization strategies in deep RL, which may result in both overly conservative and aggressive step sizes depending on the environment. Nevertheless, the competitive performance of GRASS with Tuned-32 and Tuned-512 in $3/5$ environments demonstrates its promise for adaptive step size selection with DQN in complex, pixel-based environments. 
 \section{Adaptive Step Size with PPO}
 \begin{figure}[htbp]
     \centering
@@ -1144,16 +1144,14 @@ We found the loss landscape to indeed be smoother when using SAM, allowing PALS 
 \end{figure}
 
 The steady increase in step size when using SAM for both methods is concerning, as it resembles the pattern of the failure modes observed in Section~\ref{sec:dqn_results}, where some methods suffered from performance degradation over the course of the run.
-Indeed, examining Figure~\ref{fig:sam_atari5}(a), we found that while performance across the Atari-5 was improved for PALS and Tuned-512, performance for GRASS was unchanged due to worsened behavior in some environments, as shown in Battle Zone in Figure~\ref{fig:sam_atari5}(b).
+Indeed, examining Figure~\ref{fig:sam_atari5}(a), we found that while performance across the Atari-5 was improved for PALS, performance for GRASS and Tuned-512 was unchanged due to worsened behavior in some environments, as shown in Battle Zone in Figure~\ref{fig:sam_atari5}(b). Performance for Tuned-32 was also significantly worsened when using SAM, though this method did not exhibit the same relatively high sharpness in the loss as the other methods. 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{figures/thesis/ablations/1_sam/sam_atari5_return_step.png}
     \caption[SAM vs.\ no SAM on Atari-5: return and step size.]{\textbf{(a) Left:} Normalized performance and step size, and \textbf{(b) Right:} return and step size in Battle Zone, for DQN with Adam on the Atari-5, with and without SAM. Performance was improved for PALS and Tuned-512, while GRASS was unchanged due to worsened behavior in Battle Zone.}
     \label{fig:sam_atari5}
 \end{figure}
-In this environment, we observed the steadily increasing step size and corresponding performance degradation seen with other globalization strategies in Section~\ref{sec:dqn_results}. This finding suggests that selecting step size based on the SAM objective can lead to aggressively large steps for the true objective. To address this issue with GRASS, one can increase the growth threshold $T_{\text{hi}}$ in the gain-ratio, as shown in Figure~\ref{fig:sam_atari5}(a), which improved performance by making the method more conservative. However, in practice we found that this change was overfit to Atari, harming performance in classic control.
-
-The improved performance of Tuned-512 with SAM supports the view that the loss of the implicit regularization afforded by small batch size is harmful with DQN in Atari. Conversely, Tuned-32 failed with SAM, \todo{Note for Adam: Think this could be because I didn't retune with SAM, currently running this before i say anything further}
+In this environment, we observed the steadily increasing step size and corresponding performance degradation seen with other globalization strategies in Section~\ref{sec:dqn_results}. This finding suggests that when the observed issues related to sharp loss are not already present, selecting step size based on the SAM objective can lead to aggressively large, high variance steps that destabilize progress on the true objective.
 
 \chapter{Conclusion and Future Work} \label{sec: conclusion}
 The performance of deep RL algorithms is notoriously sensitive to hyperparameters. Step size, which serves as the primary mechanism for controlling the magnitude of an update, is particularly difficult to set for each new environment. Popular hyperparameter tuning methods such as grid-search are typically only tractable with access to a simulator, which is not available for many real-world settings such as industrial control. This motivated our examination of line search and trust region methods to autonomously select step size for deep RL algorithms while learning online.
@@ -1356,15 +1354,17 @@ Brax & PPO & $3\mathrm{e}{-5}$ to $3\mathrm{e}{-1}$ \\
 \renewcommand{\arraystretch}{1.2}
 \begin{tabular}{@{}l l l l l@{}}
 \toprule
-Env. Suite & Algorithm & Optimizer & Batch Sizes & Step Size \\
+Env. Suite & Algorithm & Optimizer & SAM & Batch Sizes & Step Size \\
 \midrule
-Classic Control & DQN & Adam & 32, 1024 & $1\mathrm{e}{-3}$ \\
-Atari-5 & DQN & Adam & 32, 512 & $6.25\mathrm{e}{-5}$ \\
-Classic Control & PPO & Adam & 64, 1024 & $3\mathrm{e}{-3}$ \\
-Brax & PPO & Adam & 64, 1024 & $3\mathrm{e}{-4}$ \\
+Classic Control & DQN & Adam & false & 32, 1024 & $1\mathrm{e}{-3}$ \\
+Atari-5 & DQN & Adam & false & 32 & $6.25\mathrm{e}{-5}$ \\
+Atari-5 & DQN & Adam & true & 32 & $6.25\mathrm{e}{-4}$ \\
+Atari-5 & DQN & Adam & true, false & 512 & $6.25\mathrm{e}{-6}$ \\
+Classic Control & PPO & Adam & false & 64, 1024 & $3\mathrm{e}{-3}$ \\
+Brax & PPO & Adam & false & 64, 1024 & $3\mathrm{e}{-4}$ \\
 \bottomrule
 \end{tabular}
-\caption[Selected fixed step size for each environment suite, algorithm, and optimizer.]{Selected fixed step size for each environment suite, algorithm, and optimizer. The step size was identical across the batch sizes examined in every setting. Atari-5 DQN was run only with Adam.}
+\caption[Selected fixed step size for each environment suite, algorithm, and optimizer.]{Selected fixed step size for each environment suite, algorithm, and optimizer with and without SAM. The step size was identical across the batch sizes examined in every setting. Atari-5 DQN was run only with Adam.}
 \label{tab:tuned_n}
 \end{table}
 
