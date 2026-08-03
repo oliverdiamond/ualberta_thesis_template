@@ -209,8 +209,8 @@ Despite much recent success, the performance of deep reinforcement learning (RL)
 
 % Algorithms designed for solving the RL problem can be thought of as intelligent agents in the sense that they make use of newly gathered information about the environment—namely, the experience of taking an action in some state, observing the resulting next state, and receiving a reward—to update their policy so that they may achieve higher reward in the future. Some experiences are highly informative and warrant a large change to the agent's behavior, while other experiences point only to a small adjustment. The primary mechanism for controlling the magnitude of an update is known as the step size $\eta$. Its role is especially important for modern RL algorithms, where a single update based on an experience in a given state can affect behavior across many other states in ways that are difficult to predict. Yet $\eta$ is typically fixed, limiting an algorithm's ability to adapt quickly and intelligently upon discovering new information about the world \tocite{citation}. Additionally, different environments often require step sizes orders of magnitude apart to attain strong performance \tocite{citation}. Both these concerns motivate learning algorithms that can dynamically adjust $\eta$ for each update.
 
-In practice, tuning step size is common for deep RL algorithms. Perhaps the most common approach is a grid search, where a wide range of hyperparameter combinations are tested. Grid searches can be effective but typically require parallelism allowed for by a simulator, limiting their applicability. Further these broad hyperparameter searches are not generally possible for agents deployed in real-world settings such as industrial control\cite{luo2022controlling,janjua2024gvfs}, where testing multiple
-hyperparameter configurations can be time-consuming or dangerous. Finally, grid searches typically find a fixed step size that works well on average throughout learning and across runs -- not a step size tailored to a specific agent on a specific time step.
+In practice, systematically tuning step size is common for deep RL algorithms. Perhaps the most common approach is a grid search, where a wide range of hyperparameter combinations are tested. Grid searches can be effective but typically require parallelism allowed for by a simulator, limiting their applicability. Further these broad hyperparameter searches are not generally possible for agents deployed in real-world settings such as industrial control \cite{luo2022controlling,janjua2024gvfs}, where testing multiple
+hyperparameter configurations can be time-consuming or dangerous. Finally, grid searches typically find a fixed step size that works well on average throughout learning and across runs -- not a step size tailored to a specific environment on a specific time step.
 
 Bayesian and evolutionary methods can more efficiently identify good fixed hyperparameter settings than grid searches, but nevertheless suffer from similar drawbacks regarding the need for extensive computation and simulators \cite{parker2022automated}. Fixed default step sizes exist for common benchmarking suites like MuJoCo Playground and the Arcade Learning Environment (ALE). \tocite{ALE, MuJoCo Playground}
 However, different repositories use slightly different settings, and recent work has shown these
@@ -237,14 +237,14 @@ Trust region methods obtain an update $\update$ by exactly or approximately mini
 
 Although originally designed for deterministic objectives, both line search and trust region methods have been extended to the stochastic setting in supervised learning (SL), demonstrating impressive empirical performance on popular benchmarks and enjoying robust theoretical guarantees \cite{lu2024towards,vaswani2019painless,galli2023monotone,shea2024so,vaswani2020adaptive,fox2024glocal,vaswani2025armijo,fan2023bisls,jiang2023adaptive}\todo{Move RL citations from here to next sentence, replace with trust region citations for stochastic deep SL}.
 
-Globalization strategies have been utilized much less in deep reinforcement learning. Line search methods have been employed in the tabular RL setting \tocite{Grab from long list before this} and were more recently used with modern optimizers for prediction in deep RL \cite{PALS2026}. Trust region methods have been used for control in deep RL with TRPO \cite{schulman2015trust}, which uses a backtracking line search to keep each update within a KL trust region in policy-distribution space. However, to the best of our knowledge, neither line search nor trust region methods have been used to adapt the step size for an underlying optimizer with respect to the objective in deep RL control.
+Globalization strategies have been utilized much less in deep reinforcement learning, though line search methods have been employed in the tabular RL setting \tocite{Grab from long list before this}. Trust region methods have been used for control in deep RL with TRPO \cite{schulman2015trust}, which uses a backtracking line search to keep each update within a KL trust region in policy-distribution space. However, to the best of our knowledge, neither line search nor trust region methods have been used to adapt the step size for an underlying optimizer with respect to the objective in deep RL control.
 
 \section{Contributions}
 This thesis examines globalization strategies for adaptive step size selection in deep RL control. We provide the first empirical study of globalization strategies for adaptive step size in deep RL, characterizing algorithm and environment pairings for which these methods perform well and those in which they struggle. We investigate line search and trust region methods in tandem with value-based and policy gradient deep RL algorithms across popular benchmark environments of varying complexity. Our main contributions are as follows:
 
 \begin{enumerate}
 \item \textbf{We propose two first-order methods for adaptive step size.} We introduce Parallel Argmin Line Search (PALS) and Gain-Ratio Adaptive Step Size (GRASS), which are based on traditional line search and trust region methods, respectively. The primary obstacle to adopting line search is its sequential backtracking procedure, whose worst-case complexity is linear in the number of backtracking steps. PALS instead evaluates all candidate step sizes in parallel, enabling an effective new selection criterion based on the step size that provides the greatest improvement in the objective. However, its higher energy demands could limit its viability for real-world learning on edge devices. GRASS addresses this computational burden by using the gain-ratio heuristic from trust region methods to incrementally adjust the step size without performing a full search, requiring only one additional forward pass per update compared to a fixed step size. We identify diverse settings in which both methods significantly outperform their standard line search and trust region counterparts. We also find they are generally competitive with tuned fixed step sizes.
-\item \textbf{We identify an effective approach for combining globalization strategies with momentum-based optimizers in deep RL.} Globalization strategies cannot soundly be applied when the underlying optimizer uses momentum because $\update$ is no longer guaranteed a descent direction. This issue has resulted in poor performance when naively using line search with momentum-based optimizers in supervised learning \tocite{ls+ams paper, not painless}. The Adam optimizer \cite{kingma2015adam} is ubiquitous in deep RL, and we demonstrate that naively applying globalization strategies with Adam results in poor performance in this setting as well.  To address this issue, we adopt an approach originally introduced to combine line search with Polyak momentum in supervised learning \cite{vaswani2020adaptive}, and demonstrate that it is also effective for combining both line search and trust region methods with Adam in deep RL. 
+\item \textbf{We identify an effective approach for combining globalization strategies with momentum-based optimizers in deep RL.} Globalization strategies cannot soundly be applied when the underlying optimizer uses momentum because $\update$ is no longer guaranteed a descent direction. This issue has resulted in poor performance when naively using line search with momentum-based optimizers in supervised learning \tocite{ls+ams paper, not painless}. The Adam optimizer \cite{kingma2015adam}, which employs an exponentially weighted moving average of gradients as a momentum mechanism, is ubiquitous in deep RL. We demonstrate that naively applying globalization strategies with Adam results in poor performance in this setting as well.  To address this issue, we adopt an approach originally introduced to combine line search with Polyak momentum in supervised learning \cite{vaswani2020adaptive}, and demonstrate that it is also effective for combining both line search and trust region methods with Adam in deep RL. 
 \item \textbf{We examine a remedy for overly conservative step sizes when applying globalization strategies in sharp loss landscapes.} Line search methods have been shown to sometimes select highly conservative step sizes in the full-batch supervised setting \cite{roulet2024stepping}, resulting in slow convergence to sharp local minima with poor generalization performance. We demonstrate a similar issue can also occur with line search and trust region methods in deep RL, and propose Sharpness Aware Minimization \tocite{SAM} as a remedy. We show the SAM objective can greatly improve performance in environments where this pathology is present, at the cost of degraded performance where it is absent.
 \end{enumerate}
 
@@ -259,12 +259,12 @@ This thesis examines globalization strategies for adaptive step size selection i
 \end{itemize}
 
 \chapter{Background} \label{sec: background}
-The reinforcement learning problem is a formalism for an individual interacting with the world with the intention of achieving goals \cite{sutton1998introduction}. In RL, an agent is tasked with maximizing the sum of a reward signal during sequential interaction with an environment. On each of a series of discrete timesteps, the agent observes the state of the environment and takes an action according to its internal decision-making algorithm, which we refer to as a policy. On the next timestep, as a result of the agent's action and the environment dynamics, the environment state changes and the agent receives a scalar reward. The reward may be positive, negative, or neutral (zero), indicating the desirability of the immediate outcome of the action. The agent then takes another action based on the newly observed state, and the cycle repeats. The totality of all these interactions with the environment is referred to as the agent's lifetime. 
+The reinforcement learning problem is a formalism for an individual agent interacting with the world with the intention of achieving goals \cite{sutton1998introduction}. In RL, an agent is tasked with maximizing the sum of a reward signal during sequential interaction with an environment. On each of a series of discrete timesteps, the agent observes the state of the environment and takes an action according to its internal decision-making algorithm, which we refer to as a policy. On the next timestep, as a result of the agent's action and the environment dynamics, the environment state changes and the agent receives a scalar reward. The reward may be positive, negative, or neutral (zero), indicating the desirability of the immediate outcome of the action. The agent then takes another action based on the newly observed state, and the cycle repeats. The totality of all these interactions with the environment is referred to as the agent's lifetime. 
 
 This chapter provides a formal treatment of the reinforcement learning problem, describes several canonical RL algorithms and their modern deep RL counterparts, and defines two classical approaches for adaptive step size from the optimization literature: line search and trust region methods.
 
 \section{Markov Decision Processes}
-The agent-environment interaction loop described above is formalized as a Markov Decision Process (MDP), defined by the tuple $(\stateSpace, \actionSpace, \rewardFunction, \dynamics, \startStateDistribution, \discount)$, where $\stateSpace \subseteq \mathbb{R}^d$ and $\actionSpace \subseteq \mathbb{R}^m$ denote the state and action spaces, respectively. The reward function
+The agent-environment interaction loop described above is formalized as a Markov Decision Process (MDP), defined by the tuple $(\stateSpace, \actionSpace, \rewardFunction, \dynamics, \startStateDistribution, \discount)$, where $\stateSpace \subseteq \mathbb{N}$ and $\actionSpace \subseteq \mathbb{N}$ denote discrete sets referred to as the state and action spaces, respectively. The reward function
 $\rewardFunction: \stateSpace \times \actionSpace \times \stateSpace \to \distributionOver{\mathbb{R}}$ produces a distribution over a stochastic scalar reward signal, where $\distributionOver{\mathscr{X}}$ denotes
 the set of distributions over $\mathscr{X}$. The environment dynamics function $\dynamics: \stateSpace \times \actionSpace \to \distributionOver{\stateSpace}$
 maps state-action pairs to distributions over subsequent states, with the initial state sampled from the starting distribution
@@ -275,48 +275,45 @@ the current state $S_t$ and selects an action $A_t \sim \pi(\cdot \mid S_t)$ acc
 \stateSpace \to \distributionOver{\actionSpace}$. The environment transitions to a new state $S_{t + 1} \sim
 \dynamics(S_t, A_t)$ and provides the agent with a reward $R_{t+1} \sim \rewardFunction(S_t, A_t, S_{t + 1})$. As this process repeats, the distribution over states encountered by taking actions according to $\pi$ is referred to as the on-policy distribution for $\pi$, denoted $\stateDistribution \in \distributionOver{\stateSpace}$. 
 
-This work is only concerned with episodic MDPs. In the episodic variant of the RL problem, the agent-environment interaction loop is divided into a sequence of episodes, each of which ends when the agent reaches a special terminal state $S_T$ as determined by $\dynamics$. The terminal state always transitions to a start state sampled from $\startStateDistribution$. A single episode produces a trajectory of experience $\tau = (S_0, A_0, R_1, S_1, A_1, R_2, \dots, S_{T-1}, A_{T-1}, R_T, S_T)$, where $S_T$ is terminal. The discounted return from timestep $t$ is the discounted sum of the rewards collected from that step until the end of the episode,
+This work is only concerned with episodic MDPs. In the episodic variant of the RL problem, the agent-environment interaction loop is divided into a sequence of episodes, each of which ends when the agent reaches a special terminal state $S_T$ as determined by $\dynamics$. The terminal state always transitions to a start state sampled from $\startStateDistribution$. A single episode produces a trajectory of experience $\tau \doteq (S_0, A_0, R_1, S_1, A_1, R_2, \dots, S_{T-1}, A_{T-1}, R_T, S_T)$, where $S_T$ is terminal. The discounted return from timestep $t$ is the discounted sum of the rewards collected from that step until the end of the episode,
 \begin{equation}
-    G_t = \sum_{k=0}^{T - t - 1} \discount^k R_{t + k + 1}.
+    G_t \doteq \sum_{k=0}^{T - t - 1} \discount^k R_{t + k + 1}.
     \label{eq:return}
 \end{equation}
-The agent's objective is to maximize the expected discounted return from the starting state, defined as $J(\pi) = \mathbb{E}_\pi \left[ G_0 \right]$. The task of discovering an optimal policy $\pi^* = \arg\max_\pi J(\pi)$ is referred to as the \textit{control} problem.
+The agent's objective is to maximize the expected discounted return from the starting state, defined as $J(\pi) \doteq \mathbb{E}_\pi \left[ G_0 \right]$. The task of discovering an optimal policy $\pi^* \doteq \arg\max_\pi J(\pi)$ is referred to as the \textit{control} problem.
 
 \section{Value Functions}
-To learn a policy that maximizes return, RL algorithms often rely on value functions. The state-value function $\vfn: \stateSpace \to \RR$ is the expected return when starting in some state $s$ and taking actions according to a policy $\pi$ thereafter, defined as $\vfn(s) = \mathbb{E}_\pi \left[ G_t \mid S_t = s \right] $. Similarly, the action-value function $\qfn: \stateSpace \times \actionSpace \to \RR$ gives the expected return for taking an action $a$ in a state $s$ and then once again following $\pi$, defined as $ \qfn(s, a) = \mathbb{E}_\pi \left[ G_t \mid S_t = s, A_t = a \right] $. 
-Both of these functions have recursive definitions given by the Bellman equations for $\vfn$ and $\qfn$ \tocite{Bellman}, which serve as the foundation for the RL algorithms examined in this work. 
+To learn a policy that maximizes return, RL algorithms often rely on value functions. The state-value function $\vfn: \stateSpace \to \RR$ is the expected return when starting in some state $s$ and taking actions according to a policy $\pi$ thereafter, defined as $\vfn(s) \doteq \mathbb{E}_\pi \left[ G_t \mid S_t = s \right] $. Similarly, the action-value function $\qfn: \stateSpace \times \actionSpace \to \RR$ gives the expected return for taking an action $a$ in a state $s$ and then once again following $\pi$, defined as $ \qfn(s, a) \doteq \mathbb{E}_\pi \left[ G_t \mid S_t = s, A_t = a \right] $. 
+Both of these functions have recursive definitions given by the Bellman equations for $\vfn$ and $\qfn$ \tocite{Bellman}: 
 \begin{align}
-    \vfn(s) &= \E_\pi \left[ R_{t+1} + \discount \vfn(S_{t+1}) \mid S_t = s \right] \nonumber \\
+    \vfn(s) &\doteq \E_\pi \left[ R_{t+1} + \discount \vfn(S_{t+1}) \mid S_t = s \right] \nonumber \\
     &= \sum_{a} \pi(a \mid s) \sum_{s'} \dynamics(s' \mid s, a) \sum_{r} \rewardFunction(r \mid s, a, s') \left( r + \discount \vfn(s') \right),
     \label{eq:bellman_v} \\
-    \qfn(s, a) &= \E_\pi \left[ R_{t+1} + \discount \qfn(S_{t+1}, A_{t+1}) \mid S_t = s, A_t = a \right] \nonumber \\
+    \qfn(s, a) &\doteq \E_\pi \left[ R_{t+1} + \discount \qfn(S_{t+1}, A_{t+1}) \mid S_t = s, A_t = a \right] \nonumber \\
     &= \sum_{s'} \dynamics(s' \mid s, a) \sum_{r} \rewardFunction(r \mid s, a, s') \left( r + \discount \sum_{a'} \pi(a' \mid s') \qfn(s', a') \right),
     \label{eq:bellman_q}
 \end{align}
-where the summations are replaced by integrals when $\rewardFunction$, $\actionSpace$, or $\stateSpace$ are continuous. 
-
-Because the true values are typically unknown to the agent, reinforcement learning methods often learn estimates of $\vfn$, $\qfn$ or both. We define these estimates as parameterized functions $\vparam$ and $\qparam$ where $\vparams$ and $\qparams$ are learnable parameters. 
 
 \subsection{Value Function Approximation} 
-If $|\stateSpace|$ (or $|\stateSpace \times \actionSpace|$ in the case of action-value estimation) is relatively small, $\vparams$ and $\qparams$ can be the entries of tables with one row per state or state-action pair, allowing for exact estimation of $\vfn$ and $\qfn$, respectively. This is known as the \textit{tabular} setting, which underlies many of the foundational theoretical results in RL.
-However, in complex environments where $\stateSpace$ is continuous like navigating a robot from pixel inputs, 
-%or even comparatively simple board games where $\stateSpace$ is discrete yet massive like Go, 
-maintaining a table is not possible due to memory constraints. The algorithm can therefore only learn an approximation of $\vfn$ or $\qfn$. In this case method specifies a set of $k$ feature functions $\varphi_1, \dots, \varphi_k$, each mapping states to a scalar $\varphi_i : \stateSpace \to \RR$, that allow for generalizing value estimates over large subsets of $\stateSpace$. This setting, known as RL with function approximation (FA), has two important variants: linear FA and non-linear FA. In the linear case, the features serve as a typically non-linear, fixed-basis representation for an approximator that is linear in $\vparams$ or $\qparams$. In the non-linear case, the features are often a set of identity functions corresponding to the dimensions of $\stateSpace$, and the approximator is non-linear in $\vparams$ or $\qparams$. The tabular setting is actually a special case of linear FA with $|\stateSpace|$ features corresponding to indicator functions for each state $s \in \stateSpace$. Because of its generality and importance in modern RL, we present all algorithms in this work for the FA setting, though note $\actionSpace$ is assumed discrete and finite unless otherwise specified. 
+Reinforcement learning methods often learn estimates of $\vfn \in \mathbb{R}^d$ and/or $\qfn \in \mathbb{R}^n$, as the true values are typically unknown to the agent. We define these estimates as parameterized functions $\vparam$ and $\qparam$ where $\vparams$ and $\qparams$ are learnable parameters. If $|\stateSpace|$ (or $|\stateSpace \times \actionSpace|$ in the case of action-value estimation) is relatively small, $\vparams$ and $\qparams$ can be the entries of tables with one row per state or state-action pair, allowing for exact estimation of $\vfn$ and $\qfn$, respectively. This is known as the \textit{tabular} setting, which underlies many of the foundational theoretical results in RL. 
+
+However, for problems in which $\stateSpace$ is massive, like navigating a robot from visual inputs where each state represents a unique combination of pixels, %or even comparatively simple board games where $\stateSpace$ is discrete yet massive like Go, 
+maintaining a table is not possible due to memory constraints. The algorithm can therefore only learn an approximation of $\vfn$ or $\qfn$. In this case, the designer specifies a set of $k$ feature functions $\varphi_1, \dots, \varphi_k$, each mapping states or state-action pairs to a scalar $\varphi_i : \stateSpace \to \RR$, that allow for generalizing value estimates over large subsets of $\stateSpace$. We refer to the set of all possible combinations of feature values as the observation space %todo: does this make sense and please provide latex as fancy O in in R^k matching the state space font
+This setting, known as RL with function approximation (FA), has two important variants: linear FA and non-linear FA. In the linear case, the features serve as a fixed-basis representation for an approximator that is linear in $\vparams$ or $\qparams$, while in the non-linear case the approximator is non-linear in $\vparams$ or $\qparams$. The tabular setting is actually a special case of linear FA with $|\stateSpace|$ features corresponding to indicator functions for each state $s \in \stateSpace$ (the generalization for tabular estimation of $\qfn$ is analogous). Because of its generality and importance in modern RL, we present all algorithms in this work for the FA setting, though note we do not use $\actionSpace$ is assumed discrete unless otherwise specified. 
 
 \section{Prediction Algorithms} \label{sec:prediction}
 Intuitively, for an agent to improve its policy it must first be able to determine the quality of its current behavior. Learning value functions for a fixed policy is therefore a natural first step toward solving the full control problem. The task of estimating $v_\pi$ and $q_\pi$ is known as the prediction problem, or policy evaluation. The objective is to minimize the mean squared value error (MSVE), defined for state values as
 \begin{equation}
-    \text{MSVE}(\vparams) = \sum_{s \in \stateSpace} \stateDistribution(s) \left( \vfn(s) - \vparam(s) \right)^2,
+    \text{MSVE}(\vparams) \doteq \sum_{s \in \stateSpace} \stateDistribution(s) \left( \vfn(s) - \vparam(s) \right)^2,
     \label{eq:msve_v}
 \end{equation}
 or when learning action values as
 \begin{equation}
-    \text{MSVE}(\qparams) = \sum_{s \in \stateSpace} \stateDistribution(s) \sum_{a \in \actionSpace} \pi(a \mid s) \left( \qfn(s, a) - \qparam(s, a) \right)^2,
+    \text{MSVE}(\qparams) \doteq \sum_{s \in \stateSpace} \stateDistribution(s) \sum_{a \in \actionSpace} \pi(a \mid s) \left( \qfn(s, a) - \qparam(s, a) \right)^2,
     \label{eq:msve_q}
 \end{equation}
 where $\stateDistribution$ is the on-policy state distribution introduced above.
-In the tabular setting, if $\dynamics$ and $\rewardFunction$ are known, this objective can be minimized by iteratively solving the systems of Bellman equations defined by Equations~\eqref{eq:bellman_v} or ~\eqref{eq:bellman_q}
-via dynamic programming \cite{sutton1998introduction}. When $\dynamics$ and $\rewardFunction$ are unknown, policy evaluation becomes an online stochastic optimization problem \todo{citation}, as algorithms must construct estimates of $\vfn$ and $\qfn$ from stochastic trajectories and then minimize the MSE. Once the update targets are obtained, any optimization algorithm may be employed to reduce the loss, however all pseudocode presented in the the next two sections uses stochastic gradient descent (SGD). 
+In the tabular setting, if $\dynamics$ and $\rewardFunction$ are known, this objective can be minimized by iteratively solving the systems of Bellman equations defined by Equations~\eqref{eq:bellman_v} or ~\eqref{eq:bellman_q} via dynamic programming \cite{sutton1998introduction}. When $\dynamics$ and $\rewardFunction$ are unknown, policy evaluation becomes an online stochastic optimization problem \todo{citation}, as algorithms must construct estimates of $\vfn$ and $\qfn$ from stochastic trajectories and then minimize the MSE. Once the update targets are obtained, any optimization algorithm may be employed to reduce the loss, however all pseudocode presented in the the next two sections uses stochastic gradient descent (SGD). 
 
 \subsection{Monte Carlo Methods}
 The simplest prediction algorithm is Monte Carlo policy evaluation, which uses the full return $G_t$ observed for each state $S_t$ in a trajectory as an update target. By definition, $G_t$ is an unbiased estimate of $\vfn(S_t)$ or $\qfn(S_t, A_t)$. Algorithm~\ref{alg:mc} gives the procedure for the state-value case. One limitation of Monte Carlo evaluation is that it requires a full trajectory of experience to construct the target, delaying all updates to value estimates until the end of an episode. Another key disadvantage is that the variance of the update target is high, which can slow convergence.
@@ -362,12 +359,9 @@ where $R_{t+1} + \discount \vparam(S_{t+1})$ is the TD target and $\delta_t$ is 
 \end{algorithmic}
 \end{algorithm}
 
-Bootstrapping yields a biased, yet lower variance estimate of the true value function. Moreover, on-policy TD(0) with linear function approximation is still guaranteed to converge to the TD fixed point (the best approximation representable by the features) under standard stochastic approximation
-conditions on the step size sequence.
-Using bootstrapped targets in place of the full return has the added benefit of allowing for immediate updates after each transition in the environment rather than waiting till the end of the episode. However, a key downside of Temporal Difference (TD) learning is slower credit assignment compared to Monte Carlo methods. Because TD updates rely on one-step transitions, it can take many episodes for rewards attained at the end of a trajectory to influence the value estimates for the early states that led to it.
-
+Bootstrapping yields a biased, yet lower variance estimate of the true value function. Moreover, on-policy TD(0) with linear function approximation is still guaranteed to converge to the TD fixed point (the best approximation representable by the features) under standard stochastic approximation conditions on the step size sequence. Using bootstrapped targets in place of the full return has the added benefit of allowing for immediate updates after each transition in the environment rather than waiting till the end of the episode. However, a key downside of TD(0) relative to Monte-Carlo is that it can take many episodes for rewards attained at the end of a trajectory to propagate back into the value estimates for the early states that led to it.
 \subsection{$\lambda$-Returns}
-The TD(0) update above has a more general form, as TD methods need not bootstrap from the immediate the next state. Instead, the agent may observe $N$ rewards before bootstrapping, which reduces the bias introduced by using $\vparam$ in place of $\vfn$ and speeds up credit assignment. This target is referred to as an $N$-step return,
+The TD(0) update outlined above has a more general form. The agent may actually observe $N$ rewards before bootstrapping, which reduces the bias introduced by using $\vparam$ in place of $\vfn$ and speeds up credit assignment. This target is referred to as an $N$-step return,
 \begin{equation}
     G_{t:t+N} = \sum_{i=1}^{N} \discount^{i-1} R_{t+i} + \discount^{N} \vparam(S_{t+N}),
     \label{eq:nstep_return}
@@ -377,12 +371,11 @@ At one extreme, when $N = 1$ the target reduces to the TD(0) update in Equation~
 
 The $\lambda$-return provides an elegant solution to the above dilemma, defined as an exponentially decaying weighted average of all $N$-step returns with decay rate $\lambda$.
 \begin{equation}
-    G_t^\lambda = (1 - \lambda) \sum_{n=1}^{T - t - 1} \lambda^{n-1} G_{t:t+n} + \lambda^{T - t - 1} G_t,
+    G_t^\lambda \doteq (1 - \lambda) \sum_{n=1}^{T - t - 1} \lambda^{n-1} G_{t:t+n} + \lambda^{T - t - 1} G_t,
     \label{eq:lambda_return}
 \end{equation}
 The $\lambda$-return can also be used in place of the TD target in Equation~\eqref{eq:td_update}. Note that after summing the $N$-step returns up to $n = T - t - 1$, all the remaining weight $\lambda^{T-t-1}$ is placed on the full Monte Carlo return $G_t$ for the episode. In practice, the summation can stop at any value of $n$, which is referred to as a truncated $\lambda$-return. Similarly to $N$, tuning $\lambda$ allows for smooth interpolation between TD and Monte Carlo methods, with $\lambda = 0$ and $\lambda = 1$ reducing to the TD(0) and Monte Carlo targets, respectively. In practice, strong performance is typically obtained with an intermediate value $\lambda \in [0.7, 0.95]$ \tocite{citation}, which allows for faster credit assignment than TD(0) while avoiding the high-variance updates of Monte Carlo. \todo{not sure if i need this nod to the backward view given that we only use lambda returns for ppo in the thesis which uses forward view}
-While it may appear that the $\lambda$-return suffers the same drawback as Monte Carlo in that the agent must wait to compute an update until all $N$-step returns are available at the end of the current episode, there exists an incremental online update rule that produces identical value estimates to the  $\lambda$-return \tocite{citation}. However, algorithms that utilize the incremental form are beyond the scope of this work. 
-
+While it may appear that the $\lambda$-return suffers the same drawback as Monte Carlo in that the agent must wait to compute an update until all $N$-step returns are available at the end of the current episode, there exists an incremental online update rule that produces identical value estimates to the $\lambda$-return \tocite{true online td lambda}. However, algorithms that utilize this incremental update are beyond the scope of this work. 
 \section{Control Algorithms}
 While prediction algorithms are intrinsically useful for analyzing fixed policies, their true utility is realized in the context of control. We now examine the full RL control problem, where the agent is tasked with discovering an optimal policy. 
 
@@ -391,7 +384,7 @@ Most control algorithms are well thought of as two alternating, complementary pr
 \subsection{Value Based Methods}
 Value-based methods for control are closely aligned with the prediction algorithms discussed in Section~\ref{sec:prediction}. The primary difference is that instead of being fixed, the policy is periodically updated as outlined in the GPI framework. For value-based methods, policy improvement can be easily achieved by making the policy greedy with respect to the current value estimates. Given a policy $\pi$, the greedy policy $\pi'$ is defined as
 \begin{equation}
-    \pi'(a \mid s) =
+    \pi'(a \mid s) \doteq
     \begin{cases}
         1 & \text{if } a = \arg\max_{b} \qparam(s, b) \\
         0 & \text{otherwise.}
@@ -401,7 +394,7 @@ Value-based methods for control are closely aligned with the prediction algorith
 In the tabular setting, if the value estimates have converged to the true values, then it holds that $J(\pi') \ge J(\pi)$. However, for control algorithms, convergence to $\pi^*$ requires that every action retain nonzero probability in every state \todo{citation}. We refer to polices with this property as \textit{soft}. Without this quality, the agent may never select an action with a low value estimate from $\qparam$, even if it yields high return and would lead to an improvement if properly evaluated. 
 To address this need for sustained exploration, rather than fully greedifying the policy in the improvement phase, value-based methods often use the $\epsilon$-greedy improvement rule
 \begin{equation}
-    \pi'(a \mid s) =
+    \pi'(a \mid s) \doteq
     \begin{cases}
         1 - \epsilon + \frac{\epsilon}{|\actionSpace|} & \text{if } a = \arg\max_{b} \qparam(s, b) \\
         \frac{\epsilon}{|\actionSpace|} & \text{otherwise,}
@@ -444,10 +437,11 @@ As the policy used for gathering data differs from the greedy policy being evalu
 \subsection{Actor-Critic Methods} 
 In contrast to value-based methods, policy gradient methods explicitly parameterize and learn a policy $\pi_\theta$ with parameters $\theta$. They perform policy improvement by directly estimating the gradient of the objective $\nabla_\theta J(\theta)$ and applying a gradient-based update to $\theta$. While $\nabla_\theta J(\theta)$ cannot be computed analytically due to its dependence on $\dynamics$, which recall we assume is unknown, the policy gradient theorem \tocite{sutton} yields a quantity proportional to the true gradient that can be sampled from trajectories of experience,
 \begin{equation}
-    \nabla_\theta J(\theta) = \E_\pi \left[ G_t \frac{\nabla_\theta \pi(A_t \mid S_t, \theta)}{\pi(A_t \mid S_t, \theta)} \right].
+    \nabla_\theta J(\theta) \doteq \E_\pi \left[ G_t \frac{\nabla_\theta \pi(A_t \mid S_t, \theta)}{\pi(A_t \mid S_t, \theta)} \right].
     \label{eq:pg}
 \end{equation}
-Intuitively, moving $\theta$ in this direction increases the probability of actions with high value. One advantage of this approach over value-based methods is that a well-performing policy may be simpler to approximate than its value function. For example, an optimal policy might require only a simple linear decision boundary to separate good actions from bad ones, whereas the value function itself may be highly non-linear. An additional benefit is that directly parameterizing $\pi_\theta$ allows for easily learning policies over continuous action spaces. Policy-based methods can simply output the parameters of a continuous probability distribution such as the mean and variance of a Gaussian, from which actions can be directly sampled.
+Intuitively, moving $\theta$ in this direction increases the probability of actions with high value. One advantage of this approach over value-based methods is that a well-performing policy may be simpler to approximate than its value function. For example, an optimal policy might require only a simple linear decision boundary to separate good actions from bad ones, whereas the value function itself may be highly non-linear. An additional benefit is that directly parameterizing $\pi_\theta$ allows for easily learning policies over pseudo-continuous action spaces, which arises when the set of all possible feature vectors to which the underlying discrete actions are mapped under function approximation is vast and therefore treated as approximately continuous % todo: I want this to describe that its not nessesarily vast but also dense if that makes sense, also this is a bit of a run on as is so probably need two sentences or to make more concise
+. Policy-based methods can simply output the parameters of a continuous probability distribution such as the mean and variance of a Gaussian, from which actions can be directly sampled.
 
 Actor-critic methods are a special class of policy gradient methods that learn both a state or action-value function (the critic) and an explicitly parameterized policy (the actor). The critic can be learned just as with value-based methods, using any of the methods for policy evaluation presented in Section~\ref{sec:prediction}. Actor-critic methods then employ a bootstrapped target from the critic in place of $G_t$ in the policy gradient estimate, greatly reducing variance at the cost of some additional bias,
 \begin{equation}
@@ -524,11 +518,11 @@ These two mechanisms effectively reduce the Q-learning algorithm to solving a se
 \subsection{Proximal Policy Optimization}
 Proximal Policy Optimization (PPO) \tocite{PPO} is an actor-critic method designed for use with DNNs. The core algorithm is the same actor-critic method in Algorithm~\ref{alg:ac}, except using a $\lambda$-return in place of the TD(0) target in both the critic and actor updates. Analogously to how DQN makes Q-learning more robust, PPO introduces several changes to address two distinct sources of instability for actor-critic methods in deep RL.
 
-The first issue is the same sensitivity of neural networks to non-i.i.d data discussed in the previous section. To address this, PPO alternates between data collection and update phases. In the data collection phase, the algorithm gathers a fresh batch of several thousand transitions. In the update phase, the algorithm computes the $\lambda$-returns for each state and then freezes these targets, yielding an i.i.d dataset. The algorithm then performs multiple epochs of updates with minibatches sampled from the dataset. Because the policy changes each update, after the first update the data is no longer distributed according to the current policy $\pi_\theta$, but rather the policy $\pi_{\theta_{\text{old}}}$ used in collection. PPO corrects for this using importance sampling, weighting each sample by the ratio $r_t(\theta) = \frac{\pi_\theta(A_t \mid S_t)}{\pi_{\theta_{\text{old}}}(A_t \mid S_t)}$.
+The first issue is the same sensitivity of neural networks to non-i.i.d data discussed in the previous section. To address this, PPO alternates between data collection and update phases. In the data collection phase, the algorithm gathers a fresh batch of several thousand transitions. In the update phase, the algorithm computes the $\lambda$-returns for each state and then freezes these targets, yielding an i.i.d dataset. The algorithm then performs multiple epochs of updates with minibatches sampled from the dataset. Because the policy changes each update, after the first update the data is no longer distributed according to the current policy $\pi_\theta$, but rather the policy $\pi_{\theta_{\text{old}}}$ used in collection. PPO corrects for this using importance sampling, weighting each sample by the ratio $r_t(\theta) \doteq \frac{\pi_\theta(A_t \mid S_t)}{\pi_{\theta_{\text{old}}}(A_t \mid S_t)}$.
 
 The second issue is that actor-critic methods are prone to large, irrecoverably destructive policy updates when used with non-linear FA \tocite{PPO}. This phenomenon, known as policy collapse, occurs when inaccurate critic estimates inflate the magnitude of the policy gradient estimate in Equation~\eqref{eq:pg_advantage}. The resulting drastic changes to the policy severely degrade performance, trapping the on-policy distribution in low-value states that provide insufficient signal for policy improvement. To address this, PPO constrains how much the policy can change each update phase. Note the importance-sampled policy gradient estimate above is equal to the true gradient of a surrogate objective $L(\theta) = \mathbb{E}_t\!\left[ r_t(\theta)\, \hat{A}_t \right]$. PPO clips this objective,
 \begin{equation}
-L^{\text{CLIP}}(\theta) = \mathbb{E}_t\!\left[ \min\!\left( r_t(\theta)\,\hat{A}_t,\; \operatorname{clip}\!\left(r_t(\theta), 1-\epsilon, 1+\epsilon\right)\hat{A}_t \right) \right],
+L^{\text{CLIP}}(\theta) \doteq \mathbb{E}_t\!\left[ \min\!\left( r_t(\theta)\,\hat{A}_t,\; \operatorname{clip}\!\left(r_t(\theta), 1-\epsilon, 1+\epsilon\right)\hat{A}_t \right) \right],
 \end{equation}
 where $\epsilon$ is a small constant hyperparameter. With positive advantage, the objective increases with $r_t(\theta)$ until $r_t = 1+\epsilon$, at which point the gradient is zeroed. With negative advantage, the gradient is zeroed once $r_t < 1-\epsilon$.
 
@@ -573,6 +567,7 @@ Line search is a foundational approach for adaptive step size in the determinist
     \label{eq:interpolation}
 \end{equation}
 meaning that any stationary point of the full objective $f$ is also a stationary point of every stochastic estimate $f_k$. Neural networks are often overparameterized, a regime in which this condition approximately holds. This result motivated the use of line search in modern deep learning, and has been followed by strong empirical success \cite{vaswani2025armijo, galli2023monotone, fox2024nonmonotone, fox2024glocal}.
+% todo: do i need to mention the other major condition on the variance? I forget what it is. Is this one of the assumptions? I am talking about the painless stochastic gradient paper Vaswani et al.
 \todo{Double check to make sure these are all stochastic setting}.
 
 Like trust region methods, line search methods obtain their update direction from a local model of the objective around the current iterate,
@@ -593,23 +588,6 @@ A backtracking procedure is used to find $\stepSizeAt{k}$ by evaluating an expon
 
 While the model in Equation~\eqref{eq:model} may be of any order, this influences step-size selection only through the choice of update direction, as the Armijo condition measures decrease against the first-order term of the model regardless of the choice of $H_k$. In this work, we examine only first-order line search, in which $\updateAt{k}$ is produced by a first-order optimizer, following the majority of the stochastic line search literature \cite{vaswani2019painless,galli2023monotone,vaswani2025armijo,shea2024so,fox2024glocal}.
 % A popular reset heuristic \cite{vaswani2019painless} initializes each iteration $k$ of the line search from $\stepSizeAt{k} \delta^{n/b}$, where $\delta > 1$, $n$ is the dataset size, and $b$ is the batch size.
-
-% Despite its theoretical guarantees, the Armijo condition requires a monotonic decrease that can be restrictive, resulting in minuscule step sizes \cite{nocedal2006numerical}.
-% To mitigate this, non-monotone line searches relax the requirement of a strict decrease at every iteration and instead simply require that progress be made overall
-% \cite{zhang2004nonmonotone,galli2023monotone,fox2024nonmonotone,grippo1986nonmonotone,dai2002nonmonotone,huynh1993nonmonotone,ernesto2000nonmonotone}. This is typically accomplished by increasing the $f(\xAt{k})$ term in
-% Equation~\eqref{eq:armijo_condition}. Non-monotone line searches often choose larger step sizes than Armijo line searches, potentially leading to flatter, more robust minima \cite{fox2024nonmonotone}.
-% While many non-monotone conditions exist, in this work we examine one that requires progress over an exponential moving window of iterates \cite{zhang2004nonmonotone,galli2023monotone}:
-% \begin{equation}
-%     \begin{split}
-%         f_k(\xAt{k} + \stepSizeAt{k} \updateAt{k}) &\le C_k + c \stepSizeAt{k} \inner{\nabla f_k(\xAt{k})}{\updateAt{k}}
-%         \quad \text{where} \\
-%             C_k = \max \left\{ \tilde C_k, f_k(x_k) \right\} \qquad
-%             \tilde C_k &= \frac{\xi Q_k C_{k-1} + f_k(x_k)}{Q_{k+1}} \qquad
-%             Q_{k + 1} = \xi Q_k + 1
-%     \end{split}
-%     \label{eq:nonmonotone_condition}
-% \end{equation}
-% where again $c \in (0, 1)$, $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$, and the recurrences are initialized with $Q_0 = 1$ and $C_0 = f_0(x_0)$. Here, $C_k$ is a bias-corrected exponential moving average of function values, except that when $f_k(\xAt{k}) > \tilde C_k$, the term $C_k = f_k(\xAt{k})$ subsumes the weight for the past function values.
 
 \subsection{Trust Region Methods} \label{subsec:trust_region}
 Trust region methods offer an alternative approach to globalization. Rather than fixing an update direction and searching for a step size along it, both the step size and the direction are chosen together. To accomplish this, they construct a local model of the objective and solve it within a bounded region around the current iterate. Like line search, trust region methods provide global convergence guarantees in the deterministic setting \cite{nocedal2006numerical}. Many variants of trust region have been examined in the stochastic setting \tocite{stochastic trust region refs}, and it was recently shown to converge under the same interpolation condition given in \ref{eq:interpolation} \tocite{new TR paper}. \todo{check with Chen that my understanding of this result is correct}. 
@@ -645,17 +623,17 @@ The Cauchy point has a key benefit of being relatively inexpensive to compute co
 \section{Summary}
 In this chapter we first formalized the RL problem as an MDP, defined value functions and policies, and examined several foundational prediction algorithms for estimating state or state-action values from experience. We then described control algorithms for both discrete and continuous action spaces, along with their deep RL counterparts examined in this work, DQN and PPO. Lastly, we defined the stochastic optimization setting and the two classes of adaptive step size methods that we build upon in this work: line search and trust region methods. The methods introduced in the next chapter are all variants of these two approaches, with various modifications to improve their robustness in deep RL.
 
-\chapter{Methods} \label{sec: methods}
-In this chapter we introduce two first-order methods for adaptive step size in RL: Parallel Argmin Line Search (PALS) and Gain-Ratio Adaptive Step Size (GRASS). These approaches build upon backtracking line search and trust region methods. We also introduce several independent modifications to stabilize the chosen step sizes in high-variance regimes like RL. We show that these modifications can also be applied with backtracking Armijo line search, as well as standard first-order trust region and the Cauchy point.
+\chapter{Methods} \label{sec: methods} % todo: title for this section that actually describes what is in it, not sure what to put since we cover 3 distinct things as describe in the para below. 
+In this chapter we first introduce two first-order methods for adapting the step size parameter in RL: Parallel Argmin Line Search (PALS) and Gain-Ratio Adaptive Step Size (GRASS). These approaches build upon backtracking line search and trust region methods. We also introduce several independent modifications to stabilize the chosen step sizes in high-variance regimes like RL. We show that these modifications can also be applied with backtracking Armijo line search, as well as standard first-order trust region and the Cauchy point method. We then outline an approach for using globalization strategies to select step size for momentum-based optimizers. Lastly, we describe sharpness aware minimization and demonstrate how it can be easily applied in tandem with globalization strategies.
 
 \section{Parallel Argmin Line Search} \label{sec: pals}
-We introduce a new line search algorithm that employs a parallel search to avoid sequential backtracking and common initialization heuristics \cite{vaswani2019painless,galli2023monotone}.\footnote{PALS was developed by Samuel Neumann in co-authored unpublished work.} This allows for the use of a more effective selection criterion based on the step size that provides the greatest improvement in the objective.
+We introduce a new line search algorithm that employs a parallel search to avoid both sequential backtracking and common initialization heuristics \cite{vaswani2019painless,galli2023monotone}.\footnote{PALS was developed by Samuel Neumann in co-authored, in-prep work.} This results in a more effective selection criterion based on the step size that provides the greatest improvement in the objective.
 
-The primary obstacle to adopting line search methods is the sequential backtracking procedure. However, backtracking is in fact fully parallelizable. Using modern hardware accelerators, the entire step size search can be executed in parallel. This alters the design space: line search methods need not rely on conservative initializations or incremental heuristics for computational efficiency. Furthermore, methods can obtain an approximation of the local objective landscape. By searching over a sufficiently large set of step sizes, the algorithm can better capture the local geometry and can achieve greater progress.
+The primary obstacle to adopting line search methods is the sequential backtracking procedure, however backtracking is in fact fully parallelizable. Using modern hardware accelerators, the entire step size search can be executed in parallel. This alters the design space: line search methods need not rely on conservative initializations or incremental heuristics for computational efficiency. Furthermore, methods can obtain an approximation of the local objective landscape. By searching over a sufficiently large set of step sizes, the algorithm can better capture the local geometry and can achieve greater progress.
 
 Rather than accepting the largest examined step size that satisfies the Armijo condition (as is typical with sequential backtracking line searches) we propose a more aggressive selection strategy. The method selects the step size that provides the greatest reduction in $f_k$ along $\updateAt{k}$ while still satisfying the stochastic Armijo condition:
 \begin{equation}\label{eq_armijo_sgd}
-    \stepSizeAt{k} = \arg\min_{\stepSize \in \mathcal{H}_k} f_k(\xAt{k} + \stepSize \updateAt{k})
+    \stepSizeAt{k} \doteq \arg\min_{\stepSize \in \mathcal{H}_k} f_k(\xAt{k} + \stepSize \updateAt{k})
 \end{equation}
 where $\mathcal{H}_k$ includes the smallest step size and the candidate step sizes that satisfy Equation~\ref{eq:armijo_condition}:
 \begin{equation}
@@ -724,7 +702,7 @@ Next we introduce a new adaptive step size method based on trust region: Gain-Ra
 \end{algorithm}
 This approach can be thought of as increasing the step size if the current value of $\eta$ satisfies the Armijo condition for $c = T_{\text{hi}}$, while decreasing the step size if the condition is not satisfied for $c = T_{\text{lo}}$.
 
-While conceptually similar to the stochastic line search methods with adaptive starting points presented in \cite{vaswani2019painless}, GRASS is primarily distinct for two reasons. First, the gain-ratio heuristic for increasing the step size is averaged over many updates before any change is made, improving robustness to noisy gradients. Second, even if an update interval $K$ of 1 were used, GRASS does not perform full backtracking at each update until a step size is accepted, but rather simply shrinks the step by a constant factor, preventing drastic decreases in $\eta$ on individual steps.
+While conceptually similar to the stochastic line search methods with adaptive starting points presented in \cite{vaswani2019painless}, GRASS is distinct for two reasons. First, the gain-ratio heuristic for increasing the step size is averaged over many updates before any change is made, improving robustness to noisy gradients. Second, even if an update interval $K$ of 1 were used, GRASS does not perform full backtracking at each update until a step size is accepted, but rather simply shrinks the step by a constant factor, preventing drastic decreases in $\eta$ on individual steps.
 
 Similarly to the EMA used in PALS, aggregating the gain-ratio over many updates before performing an adjustment can be done with any trust region method, not just GRASS. To isolate the effect of removing the implicit normalization step in trust region methods, we also test the median gain-ratio with a simple first-order trust region method, which like GRASS utilizes a first-order model with an arbitrary descent direction in place of $\nabla f_k(\xAt{k})$.
 
@@ -754,7 +732,7 @@ Similarly to the EMA used in PALS, aggregating the gain-ratio over many updates 
 \end{algorithmic}
 \end{algorithm}
 
-This same first-order trust-region approach has been used with standard SGD in supervised learning \tocite{2026 Preprint that does simple first order TR in SL} but not extended to work in tandem with arbitrary optimizers as described in Section~\ref{subsec:trust_region}. 
+This same first-order trust-region approach (without the median gain-ratio) has been used with standard SGD in supervised learning \tocite{2026 Preprint that does simple first order TR in SL} but not extended to work in tandem with arbitrary optimizers as described in Section~\ref{subsec:trust_region} nor applied in RL. 
 
 We can also apply the aggregated gain-ratio when using the traditional second-order Cauchy point method. Recall the trust region is only expanded when both the gain ratio is sufficiently large and the update $p_k$ lies at the boundary of the trust region. The second condition is trivially satisfied on every update when using a first-order model, but not for the second-order Cauchy point. Therefore, we only expand the trust region when both the aggregated gain-ratio is sufficiently large and $\tau_k=1$ for at least half the updates in the aggregation window.
 
@@ -792,7 +770,7 @@ Lastly, unlike in classical trust region methods, when using the aggregated gain
 
 
 \section{Globalization Strategies with Momentum-Based Optimizers} \label{sec:momentum}
-As both line search and trust region rely on descent directions as input at each update, combining them with momentum-based optimizers that may produce ascent directions is non-trivial. For line search, the requirement $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$ disqualifies many popular optimizers, such as Adam \cite{kingma2015adam}. Letting $g_k = \nabla f_k(\xAt{k})$ and $\beta_1, \beta_2 \in (0, 1)$, Adam computes $u_k = -A^{-1}_k m_k$ where $A_k^2 = \mathrm{diag}(v_k)$ is a diagonal preconditioner formed from the second moment estimate $v_k = \beta_2 v_{k-1} + (1 - \beta_2) g_k^2$, and $m_k = \beta_1 m_{k-1} + (1 - \beta_1) g_k$ is a momentum term. We omit the bias correction terms for clarity. This momentum term causes difficulties since $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} = -\inner{\nabla f_k(\xAt{k})}{A_k^{-1} m_k}$ is not guaranteed to be negative. Recently, \cite{vaswani2020adaptive} motivated a new way to combine momentum-based optimizers with line search methods by dropping the momentum term from the Armijo condition. For stochastic gradient descent with Polyak or Nesterov momentum, they search for a step size $\stepSizeAt{k}$ satisfying
+As both line search and trust region rely on descent directions as input at each update, combining them with momentum-based optimizers that may produce ascent directions is non-trivial. For line search, the requirement $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$ disqualifies many popular optimizers, such as Adam \cite{kingma2015adam}. Letting $g_k = \nabla f_k(\xAt{k})$ and $\beta_1, \beta_2 \in (0, 1)$, Adam computes $u_k = -A^{-1}_k m_k$ where $A_k^2 = \mathrm{diag}(v_k)$ is a diagonal preconditioner formed from the second moment estimate $v_k = \beta_2 v_{k-1} + (1 - \beta_2) g_k^2$, and $m_k = \beta_1 m_{k-1} + (1 - \beta_1) g_k$ is a momentum term. We omit the bias correction terms for clarity. This momentum term causes difficulties since $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} = -\inner{\nabla f_k(\xAt{k})}{A_k^{-1} m_k}$ is not guaranteed to be negative. Momentum-based optimizers have been combined with line search methods by dropping the momentum term from the Armijo condition \cite{vaswani2020adaptive}. For stochastic gradient descent with Polyak or Nesterov momentum, the method searches for a step size $\stepSizeAt{k}$ satisfying
 \begin{equation}
     f_k(\xAt{k} - \stepSizeAt{k} \nabla f_k(\xAt{k})) \le f_k(\xAt{k}) - c \stepSizeAt{k} \norm{\nabla f_k(\xAt{k})}^2,
     \label{eq:momentum_armijo_condition}
@@ -806,7 +784,7 @@ We adopt this approach when using line search methods with Adam, where the updat
 \end{equation}
 while still updating with $u_k = -A_k^{-1} m_k$. This is also the approach used for line search with AMSGrad in \tocite{the paper that did this with amsgrad}.
 
-Trust region methods face a related but distinct difficulty in that they depend on constructing the local model from a descent direction. Let $\hat{u}_k = -A_k^{-1} \nabla f_k(\xAt{k})$ denote the no-momentum direction and $u_k = -A_k^{-1} m_k$ the momentum direction, and define
+Trust region methods face a related but distinct difficulty in that they depend on constructing the local model from a descent direction. Let $\hat{u}_k \doteq -A_k^{-1} \nabla f_k(\xAt{k})$ denote the no-momentum direction and $u_k \doteq -A_k^{-1} m_k$ the momentum direction, and define
 \begin{equation}
 \begin{aligned}
     \bar{u}_k &=
@@ -821,7 +799,7 @@ Trust region methods face a related but distinct difficulty in that they depend 
     \end{cases}
 \end{aligned}
 \end{equation}
-The step size $\stepSizeAt{k}$ is adapted via the gain ratio computed from $\bar{u}_k$, following Algorithm~\ref{alg:grass}, and the Cauchy point scaling is $\tau_k = 1$ for GRASS and the first-order trust region method, or, for the standard Cauchy point method, is given by
+The step size $\stepSizeAt{k}$ is adapted via the gain ratio computed from $\bar{u}_k$, following Algorithm~\ref{alg:grass}. The Cauchy point scaling is $\tau_k = 1$ for GRASS and the first-order trust region method, and for the standard Cauchy point method is given by
 \begin{equation}
     \tau_k =
     \begin{cases}
@@ -830,20 +808,34 @@ The step size $\stepSizeAt{k}$ is adapted via the gain ratio computed from $\bar
     \end{cases}
     \label{eq:cauchy_tau_momentum}
 \end{equation}
-which follows the same derivation as Equation~\eqref{eq:cauchy_tau}, using the slope and curvature along the unit direction $\bar{u}_k$ in place of those of the negative gradient direction. The parameter update is then taken along the momentum direction:
+The above follows the same derivation as Equation~\eqref{eq:cauchy_tau} using the slope and curvature along the unit direction $\bar{u}_k$ in place of those of the negative gradient direction. The parameter update is then taken along the momentum direction:
 \begin{equation}
     \xAt{k+1} = \xAt{k} + \tau_k \stepSizeAt{k}\, d_k.
     \label{eq:tr_momentum_update}
 \end{equation}
 To the best of our knowledge, this issue has not been examined in RL nor with trust region methods.
 \section{Globalization Strategies with Sharpness Aware Minimization} \label{sec:sam}
-Gradient descent with a sufficiently large step size has been observed to enter a regime known as the edge of stability (EOS), where the sharpness of the loss landscape stabilizes near a threshold determined by the step size rather than continuing to grow \cite{cohen2021gradient}. Sharpness here is defined as the maximum eigenvalue of the Hessian $\lambda_{\max}(\nabla^2 f(x))$, or the maximum eigenvalue of the preconditioned Hessian $\lambda_{\max}(A^{-1}\nabla^2 f(x))$ when using optimizers that employ a diagonal preconditioner $A$ such as RMSProp and Adam \cite{cohen2024adaptive}.
-The maximum eigenvalue measures the curvature of the objective along the direction with the largest second directional derivative, so a large $\lambda_{\max}$ means the loss rises steeply for a small displacement in at least one direction. The definition changes when applying the preconditioner $A^{-1}$ to the gradient, as with $A$ held fixed this is equivalent to gradient descent on the preconditioned objective $\tilde{f}(y) = f(A^{-1/2} y)$ in the transformed coordinates $y = A^{1/2} x$. The Hessian of $\tilde{f}$ is $A^{-1/2} \nabla^2 f(x) A^{-1/2}$, which has the same eigenvalues as $A^{-1} \nabla^2 f(x)$, so the preconditioned sharpness corresponds to the sharpness of the objective the optimizer is effectively minimizing \tocite{citation}. 
+Gradient descent with a sufficiently large step size has been observed to enter a regime known as the edge of stability (EOS), where the sharpness of the loss landscape stabilizes near a threshold determined by the step size rather than continuing to grow \cite{cohen2021gradient}. Sharpness here is defined as the maximum eigenvalue of the Hessian $\lambda_{\max}(\nabla^2 f(x))$, or the maximum eigenvalue of the preconditioned Hessian $\lambda_{\max}(A^{-1}\nabla^2 f(x))$ when using optimizers that employ a diagonal preconditioner $A$ such as RMSProp and Adam \cite{cohen2024adaptive}. 
+The maximum eigenvalue measures the curvature of the objective along the direction with the largest second directional derivative, so a large $\lambda_{\max}$ means the loss rises steeply for a small displacement in at least one direction, as shown in Figure~\ref{fig:precond_sharpness}a. The definition changes when applying the preconditioner $A^{-1}$ to the gradient, as with $A$ held fixed this is equivalent to gradient descent on the preconditioned objective $\tilde{f}(y) = f(A^{-1/2} y)$ in the transformed coordinates $y = A^{1/2} x$. The Hessian of $\tilde{f}$ is $A^{-1/2} \nabla^2 f(x) A^{-1/2}$, which has the same eigenvalues as $A^{-1} \nabla^2 f(x)$ \tocite{citation}, so the preconditioned sharpness corresponds to the sharpness of the objective the optimizer is effectively minimizing. Both the preconditioned sharpness and the high-curvature direction from which it is derived may not correspond to that of the original coordinates, as shown in Figure~\ref{fig:precond_sharpness}b.
+
+\begin{figure}[htbp]
+    \centering
+    \includegraphics[width=\textwidth]{figures/thesis/methods/precond_sharpness.png}
+    \caption[Effect of preconditioning on sharpness.]{Effect of preconditioning on sharpness.
+    \textbf{(a) Left:} Contours of a quadratic $f$ with
+    $\nabla^2 f = \mathrm{diag}(10,1)$, whose curvature is largest along $x_1$. 
+    \textbf{(b) Right:} The same function in the transformed coordinates $y = A^{1/2}x$ with
+    $A = \mathrm{diag}(20,1)$, where $\nabla^2 \tilde{f} = \mathrm{diag}(0.5,1)$. The
+    sharpest direction is now $y_2$ rather than $y_1$. Since $A^{-1/2}\nabla^2 f(x)A^{-1/2}$
+    has the same eigenvalues as $A^{-1}\nabla^2 f(x)$, the preconditioned sharpness
+    corresponds to the sharpness of the objective the optimizer is effectively minimizing.}
+    \label{fig:precond_sharpness}
+\end{figure}
 
 Reaching the EOS is typically desirable, as flatter regions of the loss landscape are hypothesized to generalize better than sharp ones \tocite{citation for flat minima generalization}. In the full-batch supervised setting, line search algorithms have been shown to sometimes select highly conservative step sizes and fail to reach the EOS \cite{roulet2024stepping}, resulting in slow convergence to sharp, poor-performing local minima.
 However, the effect of loss landscape sharpness on the performance of globalization strategies has not been studied in RL.
 
-Sharpness aware minimization is an optimization technique that incentivizes convergence to flatter regions of parameter space. SAM was introduced to directly penalize sharp minima by replacing the ordinary loss with a worst-case loss over a small neighborhood around the current parameters,
+Sharpness aware minimization (SAM) is an optimization technique that incentivizes convergence to flatter regions of parameter space. SAM was introduced to directly penalize sharp minima by replacing the ordinary loss with a worst-case loss over a small neighborhood around the current parameters,
 \begin{equation}
     f_k^{\text{SAM}}(x) = \max_{\norm{\epsilon} \le \kappa} f_k(x + \epsilon),
     \label{eq:sam_loss}
@@ -853,7 +845,8 @@ where $\kappa > 0$ is the neighborhood radius. Directly solving the inner maximi
     \hat{\epsilon}(x) = \kappa \frac{\nabla f_k(x)}{\norm{\nabla f_k(x)}},
     \label{eq:sam_epsilon}
 \end{equation}
-and approximates $\nabla f_k^{\text{SAM}}(x)$ with $\nabla f_k(x + \hat{\epsilon}(x))$, treating $\hat{\epsilon}(x)$ as a constant with respect to $x$ (i.e., its own gradient is stopped). Pseudocode for a single SAM update is given in Algorithm~\ref{alg:sam}.
+$\nabla f_k^{\text{SAM}}(x)$ is therefore approximated with $\nabla f_k(x + \hat{\epsilon}(x))$, treating $\hat{\epsilon}(x)$ as a constant with respect to $x$ (i.e., its own gradient is stopped). This approximation is reasonable because % todo: finish this sentence
+Pseudocode for a single SAM update is given in Algorithm~\ref{alg:sam}.
 
 \begin{algorithm}[h]
 \caption{Sharpness-Aware Minimization (SAM)}
@@ -868,17 +861,17 @@ and approximates $\nabla f_k^{\text{SAM}}(x)$ with $\nabla f_k(x + \hat{\epsilon
 
 Since line search and trust region methods depend on the objective only through its value and gradient at a given point, applying SAM requires no modification to Equations~\eqref{eq:armijo_condition} and~\eqref{eq:tr_ratio} themselves: it suffices to substitute $f_k^{\text{SAM}}$ for $f_k$ wherever the backtracking condition or the gain ratio evaluates the loss or its gradient, with $\hat{\epsilon}$ recomputed at each point considered.
 
-SAM has been used to encourage better generalization in offline RL \tocite{citation} and for mitigating plasticity loss in online RL \tocite{citation}, however, to the best of our knowledge, it has not been studied as a means of addressing failure modes of globalization methods in RL nor supervised learning.
+SAM has been used to achieve better generalization in offline RL \tocite{citation} and for mitigating plasticity loss in online RL \tocite{citation}, however, to the best of our knowledge, it has not been studied as a means of addressing failure modes of globalization methods in RL nor supervised learning.
 
 
 \chapter{Experiment Setup} \label{sec: experiment_setup}
-In this chapter we describe the empirical design used to evaluate the performance of globalization strategies for adaptive step size selection in reinforcement learning. We first outline several suites of RL environments with continuous and discrete action spaces of varying complexity. We then specify the implementation details and hyperparameter settings for all examined algorithms, base optimizers and globalization strategies. Lastly, we define the experimental protocol for evaluating algorithm performance.
+In this chapter we describe the empirical design used to evaluate the performance of globalization strategies for adaptive step size selection in reinforcement learning. We first outline the examined RL environments with continuous and discrete action spaces of varying complexity. We then specify the implementation details and hyperparameter settings for all examined algorithms, base optimizers and globalization strategies. Lastly, we define the experimental protocol for evaluating algorithm performance.
 
 \section{Environments}
 The first set of environments that we examine are from the classic control suite \tocite{citation}. These environments consist of low-dimensional continuous state spaces describing the position and velocity of a small mechanical system, with a continuous action controlling an applied force or torque that drives the system's dynamics.
-While the classic control environments are traditionally defined with continuous action spaces, their action space may also be discretized for use with discrete-action algorithms like Q-learning. Specifically, we examine variants of the Acrobot, CartPole and MountainCar environments implemented as modifications of the corresponding \texttt{gymnax} \tocite{gymnax} environments, with edits made to bring their dynamics more in line with those originally described by \cite{sutton1998introduction}; these edits are detailed in Appendix~\ref{app_classic_control_diffs}.
+While the classic control environments are traditionally defined with continuous action spaces, their action space may also be discretized for use with discrete-action algorithms like Q-learning. Specifically, we examine variants of the Acrobot, CartPole and MountainCar environments implemented as modifications of the corresponding \texttt{gymnax} \tocite{gymnax} environments, with modifications made to bring their dynamics closer to those originally described by \cite{sutton1998introduction}. These modifications are detailed in Appendix~\ref{app_classic_control_diffs}.
 
-The second set of environments are taken from the Arcade Learning Environment (ALE) \tocite{ALE}. Unlike classic control, the ALE presents the agent with raw pixel observations of Atari 2600 games, yielding a much higher-dimensional state space. This makes learning an accurate value function or policy a substantially harder optimization problem than the low-dimensional classic control settings.
+The second set of environments are taken from the Arcade Learning Environment (ALE) \tocite{ALE}. Unlike classic control, the ALE presents the agent with raw pixel observations of Atari 2600 games, yielding a much higher-dimensional observation space. This makes learning an accurate value function or policy a substantially harder optimization problem than the low-dimensional classic control settings.
 The ALE has many configurable parameters controlling the environment dynamics. We borrow all environment settings from the Google Dopamine baselines \tocite{Dopamine, Revisiting rainbow}, including sticky actions for stochastic transitions, a minimal action space per game, a frameskip of 4 frames per timestep, and a framestack of the previous four $84{\times}84$ downsampled and greyscale frames to compose the state. The full set of ALE environment implementation details is outlined in Appendix~\ref{app_ale_params}. In this work we only examine the Atari-5 \tocite{atari 5}, a subset of the ALE that is reflective of performance on the full 57 game suite. 
 
 The third set of environments is the Brax suite, which provides fast, approximate replications of a collection of continuous-control locomotion tasks originally simulated with the MuJoCo physics engine \tocite{brax}. Like the ALE, these environments all have high-dimensional continuous state spaces, making learning policies and value functions a more challenging optimization problem than in the classic control environments. However, unlike Atari, these environments use proprioceptive states rather than pixel-based observations and also possess continuous action spaces. State dimensionality ranges from under 10 in the simplest environment to several hundred in the most complex, while action dimensionality ranges from 2 to 17.
@@ -964,34 +957,6 @@ This finding suggests globalization strategies may be prone to accelerating the 
 \end{figure}
 
 GRASS may be less afflicted by the feedback loop described above because its chosen step size stabilizes much earlier in the run as compared to the other adaptive methods. Because $\stepSize$ scales a unit vector rather than the raw update with standard trust region methods, the displacement per update is $\stepSize$ rather than $\stepSize \norm{\updateAt{k}}$. Starting from the same $\trustRegionInit$ of $1e-5$, we observed an initial growth period for both GRASS and the trust-region methods. However, for GRASS the median gain-ratio quickly fell below $T_{\text{hi}}$ and the step size then shrank accordingly. Since the effective displacement is smaller by a factor of $\norm{\updateAt{k}}$ for trust region methods, their step size continued to grow. Similarly, unlike GRASS, the examined line search methods adjust the step size each update and always consider the maximum step of $1$, making them more prone to the same divergent behavior. \todo{Q for Adam: not sure if this makes sense re regular TR being more susceptible to divergence bc there are more updates with larger ss early on}
-
-% Interestingly, this phenomenon is not observed in Name This Game. As shown in % todo: ref appendix with dqn atari curves
-% we again observe decline in return correlated with increasing step sizes, however there is no corresponding trend in the loss, TD-error, gradient norms or Q-values, all of which are indistinguishable from the tuned baselines. However, the decline again appears to be a consequence of the larger batch size. Recall that Tuned-32 and Tuned-512 use an identical step size of $6.25\mathrm{e}{-5}$, and we observe that Tuned-512 performs much worse than Tuned-32 in this environment. Over the course of the run, Armijo and PALS raise their step sizes from roughly $5\mathrm{e}{-6}$ to approximately this value, and their return decays from a peak above Tuned-32 down to the level of Tuned-512. Rather than failing by diverging, these methods gradually settle on a step size that clearly performs poorly at their batch size, and performance declines accordingly. By contrast, GRASS, which selects step sizes roughly 1000 times smaller, achieves the best performance in this environment. 
-% This failure mode again appears to be a consequence of the dependence of globalization methods on large batch size in RL control examined in Section~\ref{sec:batch_size}, in tandem with the sensitivity of the DQN algorithm to batch size. 
-% That GRASS is again the exception follows from how conservative it is by construction. The Armijo condition with sufficient decrease constant $c$ is exactly the requirement $\rho_k \ge c$, so with $c = 0.1$ the line search methods accept any step realizing a tenth of the predicted decrease on the current batch. GRASS instead requires a median gain-ratio above $T_{\text{hi}} = 0.75$ over a window of $K$ updates before increasing $\stepSize$, and shrinks $\stepSize$ whenever that median falls below $T_{\text{lo}} = 0.25$. It is therefore stricter about what counts as an accurate step, and less exposed to the variance of any individual batch.
-
-% ---------------------------------------------------------------------------
-% ALTERNATIVE ACCOUNT OF NAME THIS GAME (opus, per your note). Swap in for the
-% paragraph above if you prefer it. The two are mutually exclusive.
-%
-% A simpler account of this environment is available. The step size selected by
-% the grid search at batch size $512$ was the smallest value in the range tested
-% (Appendix~\ref{app_tuning_ranges}), so the best fixed step size at this batch
-% size is plausibly lower still, and $6.25\mathrm{e}{-5}$ should be read as an
-% upper bound rather than an optimum. Under this reading nothing pathological
-% occurs in Name This Game. The step size appropriate to batch size $512$ is
-% simply much smaller than the one appropriate to batch size $32$, and Armijo
-% and PALS climb past it. The Armijo condition with sufficient decrease constant
-% $c$ is exactly the requirement $\rho_k \ge c$, so with $c = 0.1$ a step is
-% accepted whenever it realizes a tenth of the predicted decrease on the current
-% batch. This continues to hold well past the step size that is good for
-% learning, as a step can reduce the loss on the batch it was computed from
-% while still being too large for the objective the agent is optimizing. GRASS
-% avoids the problem because it requires a median gain-ratio above
-% $T_{\text{hi}} = 0.75$ over a window of $K$ updates before increasing
-% $\stepSize$, and shrinks $\stepSize$ whenever that median falls below
-% $T_{\text{lo}} = 0.25$.
-% ---------------------------------------------------------------------------
 
 Unlike in Battle Zone, returning to Figure~\ref{fig:dqn_atari_adam}, we observed that for Qbert, step sizes were roughly $10^2$ to $10^4$ times smaller than the tuned baselines, and roughly 10 to 100 times smaller than the chosen step sizes in the other Atari environments. All adaptive methods performed poorly in this environment, and we found that performance was correlated with sharpness in the loss, with GRASS and both line search methods reaching preconditioned sharpness roughly 1000 times greater than the baselines.
 
