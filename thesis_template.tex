@@ -251,9 +251,9 @@ This thesis examines globalization strategies for adaptive step size selection i
 
 \section{Organization of the Thesis}
 \begin{itemize}
-\item \textbf{Chapter~\ref{sec: background}} provides a formal treatment of the RL problem, describes several canonical RL algorithms along with their deep RL counterparts that we examine in this work, and defines line search and trust region methods.
-\item \textbf{Chapter~\ref{sec: methods}} introduces PALS and GRASS, as well as several independent modifications to stabilize the chosen step size in high-variance regimes like RL. It also describes how all the examined methods can be combined with momentum-based optimizers and Sharpness Aware Minimization.
-\item \textbf{Chapter~\ref{sec: benchmarking}} investigates the performance of all the examined adaptive methods with DQN and PPO, comparing against tuned fixed step sizes.
+\item \textbf{Chapter~\ref{sec: background}} provides a formal treatment of the RL problem, describes several canonical RL algorithms along with their deep RL counterparts, and defines line search and trust region methods.
+\item \textbf{Chapter~\ref{sec: methods}} introduces PALS and GRASS, as well as several independent modifications to stabilize the step sizes selected by globalization strategies in high-variance regimes like RL. It also describes how all the examined methods can be combined with momentum-based optimizers and Sharpness Aware Minimization.
+\item \textbf{Chapter~\ref{sec: benchmarking}} investigates the performance of all the examined adaptive methods with DQN and PPO, comparing against tuned fixed step sizes and schedules.
 \item \textbf{Chapter~\ref{sec: challenges}} characterizes challenges with applying globalization strategies in deep RL. We examine the effects of batch size, momentum, and sharpness aware minimization on the performance of globalization strategies in this setting. 
 \item \textbf{Chapter~\ref{sec: conclusion}} summarizes our findings and outlines directions for future work.
 \end{itemize}
