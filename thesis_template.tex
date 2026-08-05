@@ -997,7 +997,7 @@ We found that the loss on the small batch was smoother than that of the large ba
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{figures/thesis/ablations/2_batch_size/batch_dqn_name_this_game_stepsize_loss.png}
-    \caption[Loss landscape approximation for PALS in Name This Game.]{Loss landscape approximation along the update direction for PALS in Name This Game with small and large batch size. The loss was smoother on the small batch, allowing PALS to accept a larger step size.}
+    \caption[Loss landscape approximation for PALS in Name This Game.]{Loss landscape approximation along the update direction for PALS in Name This Game with small and large batch size, for an update performed $10\%$ of the way through learning. The loss was smoother on the small batch, allowing PALS to accept a larger step size.}
     \label{fig:batch_dqn_name_this_game_loss}
 \end{figure}
 
@@ -1027,7 +1027,7 @@ Investigating further, Figure~\ref{fig:adamdir_dqn_name_this_game_loss} shows an
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{figures/thesis/ablations/3_adam_direction/adamdir_dqn_name_this_game_stepsize_loss.png}
-    \caption[Loss landscape approximation for the momentum ablation in Name This Game.]{Loss landscape approximation along the update direction for PALS in Name This Game, with and without momentum in step size selection. The loss matched the first-order model over a much larger distance when using the momentum direction $u_k$, allowing for a larger accepted step size.}
+    \caption[Loss landscape approximation for the momentum ablation in Name This Game.]{Loss landscape approximation along the update direction for PALS in Name This Game, with and without momentum in step size selection, for an update performed $10\%$ of the way through learning. The loss matched the first-order model over a much larger distance when using the momentum direction $u_k$, allowing for a larger accepted step size.}
     \label{fig:adamdir_dqn_name_this_game_loss}
 \end{figure}
 
@@ -1043,7 +1043,7 @@ In Figure~\ref{fig:adamdir_ppo_mujoco}(b), we found that the actor step sizes fo
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=0.72\textwidth]{figures/thesis/ablations/3_adam_direction/adamdir_ppo_humanoid_stepsize_loss.png}
-    \caption[Critic loss landscape along momentum and no-momentum directions in Humanoid.]{Approximations of critic loss along the update direction for PALS in Humanoid, with and without momentum in step size selection. The larger critic step sizes with momentum were a product of smoother loss along the momentum direction.}
+    \caption[Critic loss landscape along momentum and no-momentum directions in Humanoid.]{Approximations of critic loss along the update direction for PALS in Humanoid, with and without momentum in step size selection, for an update performed $10\%$ of the way through learning. The larger critic step sizes with momentum were a product of smoother loss along the momentum direction.}
     \label{fig:adamdir_ppo_humanoid_loss}
 \end{figure}
 
@@ -1083,7 +1083,7 @@ We found the loss landscape to indeed be smoother when using SAM, allowing PALS 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{figures/thesis/ablations/1_sam/sam_qbert_stepsize_loss.png}
-    \caption[Loss landscape for SAM in Qbert.]{Loss landscape approximation along the update direction for a single PALS update in Qbert, with and without SAM. The loss was smoother when using SAM, allowing PALS to accept a step size with a larger resulting displacement.}
+    \caption[Loss landscape for SAM in Qbert.]{Loss landscape approximation along the update direction for a single PALS update in Qbert, with and without SAM, for an update performed $10\%$ of the way through learning. The loss was smoother when using SAM, allowing PALS to accept a step size with a larger resulting displacement.}
     \label{fig:sam_qbert_stepsize_loss}
 \end{figure}
 
