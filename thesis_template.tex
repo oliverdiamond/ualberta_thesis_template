@@ -28,6 +28,8 @@
 \usepackage{wrapfig2}  %% <- for wrapfigure; wrapfig2 (not wrapfig) defers the
                        %%    figure to the next page when too little room is left
 \usepackage{float}     %% <- for [H] float placement (used by appendix figures)
+\usepackage{placeins}  %% <- for \FloatBarrier, used to keep algorithms and tables
+                       %%    inside the section that introduces them
 \usepackage{nicefrac}
 \usepackage{xcolor}
 \usepackage{amsmath}
@@ -188,12 +190,11 @@ The performance of deep reinforcement learning algorithms is notoriously sensiti
 \setcounter{page}{2}
 \renewcommand{\thepage}{\roman{page}} % Roman numerals for page counter
 
-\onehalfspacing
 \chapter*{Preface} \addcontentsline{toc}{chapter}{Preface}
 This thesis builds upon unpublished work done in collaboration with Samuel Neumann, Chen Fan, Martha White and Adam White. Generative AI tools such as Anthropic's Claude model were used to produce plots and edit text throughout this work. 
 
 \chapter*{Acknowledgements} \addcontentsline{toc}{chapter}{Acknowledgements}
-I am immensely grateful to my advisor, Professor Adam White, for his steadfast encouragement, insightful counsel, and grounding presence throughout the research process over the past two years. My gratitude goes to my primary collaborator, Samuel Neumann, for his extensive contributions to this project, and for being an inspiring and generous mentor as I navigated the trails of graduate research. Special thanks are also due to Professor Martha White and Dr. Chen Fan for lending their astute perspectives at many key stages of this work. I also wish to thank my labmates for their friendship and countless thought-provoking conversations. Lastly, thank you to Mom, Dad, and Julian for being there for me every step of the way.
+I am immensely grateful to my advisor, Professor Adam White, for his steadfast encouragement, insightful counsel, and grounding presence throughout the research process over the past two years. My gratitude also goes to my primary collaborator, Samuel Neumann, for his extensive contributions to this project, and for being an inspiring and generous mentor throughout trails of graduate research. Special thanks are also due to Professor Martha White and Dr. Chen Fan for lending their astute perspectives at many key stages of this work. I also wish to thank my labmates for their friendship and countless thought-provoking conversations. Lastly, thank you to Mom, Dad, and Julian for being there for me every step of the way.
 
 \tableofcontents
 \listoftables
@@ -316,7 +317,7 @@ In the tabular setting, if $\dynamics$ and $\rewardFunction$ are known, this obj
 \subsection{Monte Carlo Methods}
 The simplest prediction algorithm is Monte Carlo policy evaluation, which uses the full return $G_t$ observed for each state $S_t$ in a trajectory as an update target. By definition, $G_t$ is an unbiased estimate of $\vfn(S_t)$ or $\qfn(S_t, A_t)$. Algorithm~\ref{alg:mc} gives the procedure for the state-value case. One limitation of Monte Carlo evaluation is that it requires a full trajectory of experience to construct the target, delaying all updates to value estimates until the end of an episode. Another key disadvantage is that the variance of the update target is high, which can slow convergence.
 
-\begin{algorithm}[t]
+\begin{algorithm}[htbp]
 \caption{Monte Carlo Policy Evaluation}
 \label{alg:mc}
 \begin{algorithmic}[1]
@@ -332,6 +333,7 @@ The simplest prediction algorithm is Monte Carlo policy evaluation, which uses t
 \end{algorithmic}
 \end{algorithm}
 
+\FloatBarrier
 \subsection{Temporal Difference Methods} \label{subsec:td}
 Temporal Difference (TD) methods address both the disadvantages of Monte Carlo methods by using the current value estimates to construct the target in place of the full return, an approach referred to as bootstrapping. The TD target is derived by estimating the right side of Equations~\eqref{eq:bellman_v} or~\eqref{eq:bellman_q} for state or action-values, respectively, from sampled transitions with the current estimates $\vparam(S_t)$ or $\qparam(S_t, A_t)$ in place of the true value functions. For state values, this yields the TD(0) update
 \begin{equation}
@@ -340,7 +342,7 @@ Temporal Difference (TD) methods address both the disadvantages of Monte Carlo m
 \end{equation}
 where $R_{t+1} + \discount \vparam(S_{t+1})$ is the TD target and $\delta_t$ is the TD error. The full evaluation procedure is given in Algorithm~\ref{alg:td}. Note that performing SGD on the squared TD error with respect to $\phi$ does not yield the above update. This is because the TD target itself depends on the parameter vector $\vparams$ through the next-state value estimate $\vparam(S_{t+1})$, however this dependency is ignored when computing the gradient above. This approach is classified as a \textit{semi-gradient} method. All bootstrapping-based algorithms examined in this work are semi-gradient methods.
 
-\begin{algorithm}[t]
+\begin{algorithm}[htbp]
 \caption{TD(0) Policy Evaluation}
 \label{alg:td}
 \begin{algorithmic}[1]
@@ -358,6 +360,7 @@ where $R_{t+1} + \discount \vparam(S_{t+1})$ is the TD target and $\delta_t$ is 
 \end{algorithm}
 
 Bootstrapping yields a biased, yet lower variance estimate of the true value function. Moreover, on-policy TD(0) with linear function approximation is still guaranteed to converge to the TD fixed point (the best approximation representable by the features) under standard stochastic approximation conditions on the step size sequence. Using bootstrapped targets in place of the full return has the added benefit of allowing for immediate updates after each transition in the environment rather than waiting till the end of the episode. However, a key downside of TD(0) relative to Monte-Carlo is that it can take many episodes for rewards attained at the end of a trajectory to propagate back into the value estimates for the early states that led to it.
+\FloatBarrier
 \subsection{$\lambda$-Returns}
 The TD(0) update outlined above has a more general form. The agent may actually observe $N$ rewards before bootstrapping, which reduces the bias introduced by using $\vparam$ in place of $\vfn$ and speeds up credit assignment. This target is referred to as an $N$-step return,
 \begin{equation}
@@ -412,7 +415,7 @@ and replacing the value of the next action $\qparam(S_{t+1}, A_{t+1})$
 with the maximum over the action values in the next state $\max_{a} \qparam(S_{t+1}, a)$.
 This effectively interleaves individual steps of TD(0) policy evaluation for action-values with greedy policy improvement.
 
-\begin{algorithm}[t]
+\begin{algorithm}[htbp]
 \caption{Q-learning}
 \label{alg:qlearning}
 \begin{algorithmic}[1]
@@ -432,7 +435,8 @@ This effectively interleaves individual steps of TD(0) policy evaluation for act
 
 As the policy used for gathering data differs from the greedy policy being evaluated, Q-learning is classified as an \textit{off-policy} learning algorithm. It allows for the sustained exploration required for convergence in the tabular setting, while maintaining the ability to learn $\pi^*$ via greedy policy updates. A key benefit of off-policy learning is the ability to learn from experience generated by any policy, which proves especailly useful for its use with deep neural networks (DNNs) discussed in Section~\ref{subsec:dqn}. 
 
-\subsection{Actor-Critic Methods} 
+\FloatBarrier
+\subsection{Actor-Critic Methods}
 In contrast to value-based methods, policy gradient methods explicitly parameterize and learn a policy $\pi_\theta$ with parameters $\theta$. They perform policy improvement by directly estimating the gradient of the objective $\nabla_\theta J(\theta)$ and applying a gradient-based update to $\theta$. While $\nabla_\theta J(\theta)$ cannot be computed analytically due to its dependence on $\dynamics$, which recall we assume is unknown, the policy gradient theorem \tocite{sutton} yields a quantity proportional to the true gradient that can be sampled from trajectories of experience,
 \begin{equation}
     \nabla_\theta J(\theta) \doteq \E_\pi \left[ G_t \frac{\nabla_\theta \pi(A_t \mid S_t, \theta)}{\pi(A_t \mid S_t, \theta)} \right].
@@ -454,7 +458,7 @@ Some actor-critic methods use the advantage function \tocite{citation}, defined 
 \end{equation}
 The critic can be updated just as in prediction, using any of the targets for policy evaluation presented in Section~\ref{sec:prediction}. A simple actor-critic algorithm that learns $\vparam$ and uses Equation~\eqref{eq:pg_advantage} to estimate the policy gradient is given in Algorithm~\ref{alg:ac}. Note the TD error $\delta$ serves as an unbiased sample of the advantage $A_\pi(S_t, A_t)$.
 
-\begin{algorithm}[t]
+\begin{algorithm}[htbp]
 \caption{Actor-Critic with Advantage and TD(0) Target}
 \label{alg:ac}
 \begin{algorithmic}[1]
@@ -473,6 +477,7 @@ The critic can be updated just as in prediction, using any of the targets for po
 \end{algorithmic}
 \end{algorithm}
 
+\FloatBarrier
 \section{Deep Reinforcement Learning}
 Deep reinforcement learning refers to a particular instance of RL with non-linear FA where the approximators used to estimate $\vparam$, $\qparam$, and $\pi_\theta$ are DNNs. This setting has become the dominant paradigm in modern RL research due to the strong empirical performance of extremely low-bias, non-linear FAs when large amounts (typically on the order of millions) of samples are available for training \tocite{citation}. By removing the need for task-specific, human-designed features, deep RL has potential to autonomously solve new problems without the need for any human intervention. Despite their apparent complexity, the majority of deep RL methods are directly derived from the foundational algorithms introduced in the previous sections. In fact, any of those methods can utilize DNNs for nonlinear FA without modification. However, when naively combined with deep learning, RL algorithms typically suffer from significant instabilities resulting in poor performance \tocite{citation}. Many Deep RL algorithms can therefore be viewed as instances of standard RL methods paired with algorithmic tools to stabilize the learning process. This includes the two algorithms examined in this section: Deep Q-Learning and Proximal Policy Optimization.
 
@@ -486,7 +491,7 @@ The second issue is that neural networks are prone to instability when trained o
 
 These two mechanisms effectively reduce the Q-learning algorithm to solving a sequence of approximately i.i.d supervised regression problems, where the performance of DNNs is much more robust. The DQN algorithm is given in Algorithm~\ref{alg:dqn}. As deep RL methods are rarely trained with plain SGD, instead opting for adaptive methods like Adam \cite{kingma2015adam}, the pseudocode in this section abstracts away the choice of optimizer.
 
-\begin{algorithm}[t]
+\begin{algorithm}[htbp]
 \caption{Deep Q-Learning (DQN)}
 \label{alg:dqn}
 \begin{algorithmic}[1]
@@ -512,6 +517,7 @@ These two mechanisms effectively reduce the Q-learning algorithm to solving a se
 \end{algorithmic}
 \end{algorithm}
 
+\FloatBarrier
 \subsection{Proximal Policy Optimization}
 Proximal Policy Optimization (PPO) \tocite{PPO} is an actor-critic method designed for use with DNNs. The core algorithm is the same actor-critic method in Algorithm~\ref{alg:ac}, except using a $\lambda$-return in place of the TD(0) target in both the critic and actor updates. Analogously to how DQN makes Q-learning more robust, PPO introduces several changes to address two distinct sources of instability for actor-critic methods in deep RL.
 
@@ -525,7 +531,7 @@ where $\epsilon$ is a small constant hyperparameter. With positive advantage, th
 
 PPO employs many additional and less novel algorithmic tools for stabilizing training such as input normalization and gradient clipping, all of which are outlined in \tocite{37 implementation details}. Algorithm~\ref{alg:ppo} gives pseudocode containing only the core components discussed here.
 
-\begin{algorithm}[t]
+\begin{algorithm}[htbp]
 \caption{Proximal Policy Optimization (PPO)}
 \label{alg:ppo}
 \begin{algorithmic}[1]
@@ -551,6 +557,7 @@ PPO employs many additional and less novel algorithmic tools for stabilizing tra
 \end{algorithm}
 
 
+\FloatBarrier
 \section{Adaptive Step Size Methods} \label{sec:adaptive}
 We now turn to the two classes of adaptive step size methods examined in this work: line search and trust region. These two approaches are known as globalization strategies, as they were designed to ensure convergence to a stationary point from any starting point for deterministic non-convex optimization, a setting where classical optimizers such as Newton's method can diverge when applied with a fixed step size \todo{citation}. 
 
@@ -641,7 +648,7 @@ where $\mathcal{H}_k$ includes the smallest step size and the candidate step siz
 We call this the \textit{Parallel Argmin Line Search} (PALS), with pseudocode given in Algorithm~\ref{alg:argmin-armijo}.
 
 
-\begin{algorithm}[h]
+\begin{algorithm}[htbp]
     \caption{Parallel Argmin Line Search (PALS)}
     \label{alg:argmin-armijo}
     \begin{algorithmic}[1]
@@ -668,10 +675,11 @@ We call this the \textit{Parallel Argmin Line Search} (PALS), with pseudocode gi
 Note that the PALS algorithm also makes use of an exponential moving average (EMA) over the chosen step size. This improves robustness to noisy gradient estimates by preventing drastic changes in the learning rate. The same technique can also be applied to traditional backtracking line search.
 Pseudocode for the backtracking Armijo line search defined in Section~\ref{sec:adaptive} with EMA on the chosen step size is given as Algorithm~\ref{alg:armijo-ema} in Appendix~\ref{app_algo_pseudocode}.
 
+\FloatBarrier
 \section{Gain-Ratio Adaptive Step Size} \label{sec:grass}
 Next we introduce a new adaptive step size method based on trust region: Gain-Ratio Adaptive Step Size (GRASS). Rather than adapting the radius of a strict trust region around the current parameters, GRASS uses the same gain-ratio heuristic to simply increase or decrease the step size directly. While traditional trust region methods can be thought of as normalizing the given update vector to unit length and then applying the step size $\Delta_k$, or $\tau_k \Delta_k$ in the case of the Cauchy point, GRASS simply removes the normalization step, preserving the magnitude of the update. Additionally, to improve stability, GRASS computes the median of the gain ratio over a window of $K$ updates before updating the step size.
 
-\begin{algorithm}
+\begin{algorithm}[H]
 \caption{Gain-Ratio Adaptive Step Size (GRASS)}
 \label{alg:grass}
 \begin{algorithmic}[1]
@@ -765,6 +773,7 @@ We can also apply the aggregated gain-ratio when using the traditional second-or
 Lastly, unlike in classical trust region methods, when using the aggregated gain-ratio we do not fully reject steps when $\bar{\rho} < T_{\text{lo}}$, as the aggregated ratio is unknown until the end of each window.
 
 
+\FloatBarrier
 \section{Globalization Strategies with Momentum-Based Optimizers} \label{sec:momentum}
 As both line search and trust region rely on descent directions as input at each update, combining them with momentum-based optimizers that may produce ascent directions is non-trivial. For line search, the requirement $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} < 0$ disqualifies many popular optimizers, such as Adam \cite{kingma2015adam}. Letting $g_k = \nabla f_k(\xAt{k})$ and $\beta_1, \beta_2 \in (0, 1)$, Adam computes $u_k = -A^{-1}_k m_k$ where $A_k^2 = \mathrm{diag}(v_k)$ is a diagonal preconditioner formed from the second moment estimate $v_k = \beta_2 v_{k-1} + (1 - \beta_2) g_k^2$, and $m_k = \beta_1 m_{k-1} + (1 - \beta_1) g_k$ is a momentum term. We omit the bias correction terms for clarity. This momentum term causes difficulties since $\inner{\nabla f_k(\xAt{k})}{\updateAt{k}} = -\inner{\nabla f_k(\xAt{k})}{A_k^{-1} m_k}$ is not guaranteed to be negative. Momentum-based optimizers have been combined with line search methods by dropping the momentum term from the Armijo condition \cite{vaswani2020adaptive}. For stochastic gradient descent with Polyak or Nesterov momentum, the method searches for a step size $\stepSizeAt{k}$ satisfying
 \begin{equation}
@@ -810,6 +819,7 @@ The above follows the same derivation as Equation~\eqref{eq:cauchy_tau} using th
     \label{eq:tr_momentum_update}
 \end{equation}
 To the best of our knowledge, this issue has not been examined in RL nor with trust region methods.
+\FloatBarrier
 \section{Globalization Strategies with Sharpness Aware Minimization} \label{sec:sam}
 Gradient descent with a sufficiently large step size has been observed to enter a regime known as the edge of stability (EOS), where the sharpness of the loss landscape stabilizes near a threshold determined by the step size rather than continuing to grow \cite{cohen2021gradient}. Sharpness here is defined as the maximum eigenvalue of the Hessian $\lambda_{\max}(\nabla^2 f(x))$, or the maximum eigenvalue of the preconditioned Hessian $\lambda_{\max}(A^{-1}\nabla^2 f(x))$ when using optimizers that employ a diagonal preconditioner $A$ such as RMSProp and Adam \cite{cohen2024adaptive}. The maximum eigenvalue measures the curvature of the objective along the direction with the largest second directional derivative, so a large $\lambda_{\max}$ means the loss rises steeply for a small displacement in at least one direction, as shown in Figure~\ref{fig:precond_sharpness}a. The definition changes when applying the preconditioner $A^{-1}$ to the gradient, as with $A$ held fixed this is equivalent to gradient descent on the preconditioned objective $\tilde{f}(y) = f(A^{-1/2} y)$ in the transformed coordinates $y = A^{1/2} x$. The Hessian of $\tilde{f}$ is $A^{-1/2} \nabla^2 f(x) A^{-1/2}$, which has the same eigenvalues as $A^{-1} \nabla^2 f(x)$ \tocite{citation}, so the preconditioned sharpness corresponds to the sharpness of the objective the optimizer is effectively minimizing. Both the preconditioned sharpness and the high-curvature direction from which it is derived may not correspond to that of the original coordinates, as shown in Figure~\ref{fig:precond_sharpness}b. We approximate $\lambda_{\max}$ for the preconditioned Hessian using power iteration on $A^{-1/2} \nabla^2 f(x) A^{-1/2}$ \tocite{citation}.
 \begin{figure}[htbp]
@@ -841,7 +851,7 @@ where $\kappa > 0$ is the neighborhood radius. Directly solving the inner maximi
 $\nabla f_k^{\text{SAM}}(x)$ is therefore approximated with $\nabla f_k(x + \hat{\epsilon}(x))$, treating $\hat{\epsilon}(x)$ as a constant with respect to $x$ (i.e., its own gradient is stopped). This approximation is reasonable because the dropped term involves higher order derivatives of the loss, so it likely has little influence on the update direction for the small radii used in practice \tocite{SAM paper}.
 Pseudocode for a single SAM update is given in Algorithm~\ref{alg:sam}.
 
-\begin{algorithm}[h]
+\begin{algorithm}[htbp]
 \caption{Sharpness-Aware Minimization (SAM)}
 \label{alg:sam}
 \begin{algorithmic}[1]
@@ -857,7 +867,7 @@ Since line search and trust region methods depend on the objective only through 
 SAM has been used to achieve better generalization in offline RL \tocite{citation} and for mitigating plasticity loss in online RL \tocite{citation}, however, to the best of our knowledge, it has not been studied as a means of addressing failure modes of globalization methods in RL nor supervised learning.
 
 
-\chapter{Comparing Globalization Strategies to Step Sizes and Schedules} \label{sec: benchmarking}
+\chapter{Comparing Globalization Strategies to Fixed Step Sizes and Schedules} \label{sec: benchmarking}
 In this chapter, we examine the performance of the adaptive step size methods outlined above with DQN and PPO in RL environments with continuous and discrete action spaces of varying complexity. We found that all adaptive methods performed well in the classic control suite, demonstrating that globalization strategies can serve as an effective means of automatic step size selection in deep RL. In more complex environments, we found that GRASS significantly outperformed the other adaptive methods with DQN in Atari, with PALS ranking second by a substantial margin. However, both methods still fall short of the tuned baselines at either batch size, as globalization strategies appear to exhibit several distinct failure modes in this setting. Additionally, only GRASS and PALS consistently matched the performance of tuned baselines with PPO in Brax, demonstrating their robustness compared to standard line search and trust region methods. 
 
 \section{Adaptive Step Size with DQN} \label{sec:dqn_results}
@@ -895,8 +905,7 @@ Several implementation details differ from the classic control experiments above
 
 To calculate a method's aggregate performance across the suite, we first normalize the mean episodic returns of all runs within each environment using Winsorized Min-Max Normalization ($5^{\text{th}}$ and $95^{\text{th}}$ percentiles). For each method, we average these normalized scores across its runs per environment, and then average across all environments to yield the overall mean normalized performance. We use the $5^{\text{th}}$ and $95^{\text{th}}$ percentiles to prevent outliers from distorting the min-max normalization; this does not alter the set of runs used in our analysis. We report 95\% confidence intervals for this metric using a stratified bootstrap with $5{,}000$ resamples.
 
-We found the results in this setting to be much more nuanced than in classic control.
-Figure~\ref{fig:dqn_atari_norm_perf} shows mean normalized performance across the Atari-5. GRASS greatly outperformed all other adaptive step size methods, with PALS ranking second by a clear margin. However, all adaptive methods performed worse than Tuned-32 and Tuned-512. Nevertheless, GRASS attained this comparatively strong performance using substantially less compute than the line search methods, as the median gain-ratio requires only two loss evaluations per update rather than the $B+1$ evaluations used by PALS.
+We found the results in this setting to be much more nuanced than in classic control. Figure~\ref{fig:dqn_atari_norm_perf} shows mean normalized performance across the Atari-5. GRASS greatly outperformed all other adaptive step size methods, with PALS ranking second by a clear margin. However, all adaptive methods performed worse than Tuned-32 and Tuned-512. Nevertheless, GRASS attained this comparatively strong performance using substantially less compute than the line search methods, as the median gain-ratio requires only two loss evaluations per update rather than the $B+1$ evaluations used by PALS.
 
 \begin{figure}[htbp]
     \centering
@@ -905,7 +914,7 @@ Figure~\ref{fig:dqn_atari_norm_perf} shows mean normalized performance across th
     \label{fig:dqn_atari_norm_perf}
 \end{figure}
 
-Examining the learning curves in Figure~\ref{fig:dqn_atari_adam}, we found that performance in the Atari-5 was much less uniform across methods and environments than in the classic control domains. For example, in Battle Zone, all adaptive methods except GRASS exhibited either a total failure or a clear collapse in return after some period of learning progress. Figure~\ref{fig:dqn_atari_battle_zone} shows these collapses in performance were correlated with steadily increasing step size, loss, gradient norms, and Q-values.
+Examining the learning curves in Figure~\ref{fig:dqn_atari_adam}, we found that performance in the Atari-5 was much less uniform across methods and environments than in the classic control domains. For example, in Battle Zone, all adaptive methods except GRASS exhibited either a total failure or a clear collapse in return after some period of learning progress. Figure~\ref{fig:dqn_atari_battle_zone} shows these collapses in performance were correlated with steadily increasing step size, displacement in weight space produced by the update, loss, and Q-values. Starting from the same $\trustRegionInit$ of $1e-5$, we observe that displacement was larger for GRASS and the step size reached a threshold where the gain-ratio failed to match $T_{\text{lo}}$ very early in learning. $\stepSize$ for GRASS promptly shrank and stabilized within an order of magnitude of Tuned-512, while $\stepSize$ continued to grow for the other methods, even as the displacement far exceeded the largest value observed for grass. Step sizes for the line search methods were more stable initially, but then later in the run exhibited the same increasing behavior as the trust region methods. 
 
 \begin{figure}[htbp]
     \centering
@@ -919,11 +928,11 @@ This finding suggests globalization strategies may be prone to accelerating the 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{figures/thesis/performance/2_dqn_atari/dqn_atari_battle_zone_metrics.png}
-    \caption[Return, step size, loss, gradient norm, and Q-values for DQN in Battle Zone.]{Return, step size, loss, gradient norm, and Q-values for DQN with Adam in Battle Zone. The collapse in return for all adaptive methods except GRASS was correlated with steadily increasing step size, loss, gradient norms, and Q-values.}
+    \caption[Metrics for DQN in Battle Zone.]{Return, displacement, step size, loss, and Q-values for DQN with Adam in Battle Zone. The collapse in return for all adaptive methods except GRASS was correlated with steadily increasing step size, displacement, loss, and Q-values.}
     \label{fig:dqn_atari_battle_zone}
 \end{figure}
 
-GRASS may be less afflicted by the feedback loop described above because its chosen step size stabilizes much earlier in the run as compared to the other adaptive methods. Because $\stepSize$ scales a unit vector rather than the raw update with standard trust region methods, the displacement per update is $\stepSize$ rather than $\stepSize \norm{\updateAt{k}}$. Starting from the same $\trustRegionInit$ of $1e-5$, we observed an initial growth period for both GRASS and the trust-region methods. However, for GRASS the median gain-ratio quickly fell below $T_{\text{hi}}$ and the step size then shrank accordingly. Since the effective displacement is smaller by a factor of $\norm{\updateAt{k}}$ for trust region methods, their step size continued to grow. Similarly, unlike GRASS, the examined line search methods adjust the step size each update and always consider the maximum step of $1$, making them more prone to the same instability.
+It is unclear why GRASS did not exhibit the same instabilities observed for the other adaptive methods. Note that for the standard trust region and Cauchy methods, $\stepSize$ scales a unit vector rather than the raw update, so the displacement per update is $\stepSize$ rather than $\stepSize \norm{\updateAt{k}}$. This explains why the displacement was larger for GRASS initially any why the other methods grew $\stepSize$ to a larger value, however the displacement for these methods quickly exceeded the largest value observed for GRASS without triggering a decrease in $\stepSize$. This suggests whatever mechanism triggered the massive growth in $\stepSize$ may have originated in this early period in learning when the trust region and Cauchy point methods require more updates to reach the same displacement as GRASS. Additionally, unlike GRASS, the examined line search methods adjust the step size each update and always consider the maximum step of $1$, potentially making them more prone to all the instabilities discussed in this section. 
 
 Unlike in Battle Zone, returning to Figure~\ref{fig:dqn_atari_adam}, we observed that for Qbert, step sizes were roughly $10^2$ to $10^4$ times smaller than the tuned baselines, and roughly 10 to 100 times smaller than the chosen step sizes in the other Atari environments. All adaptive methods performed poorly in this environment, and we found that performance was correlated with sharpness in the loss, with GRASS and both line search methods reaching preconditioned sharpness roughly 1000 times greater than the baselines.
 
@@ -1101,7 +1110,7 @@ Another limitation of this work is that popular deep RL benchmarks fail to demon
 
 \renewcommand{\bibname}{References}
 \bibliography{ref}
-\bibliographystyle{plainnat}
+\bibliographystyle{IEEEtran}
 
 \appendix
 \chapter{Pseudocode for Adaptive Step Size Methods} \label{app_algo_pseudocode}
@@ -1150,6 +1159,7 @@ The Acrobot, CartPole, and MountainCar environments used in this work are implem
 \end{itemize}
 
 
+\FloatBarrier
 \section{Arcade Learning Environment Configuration} \label{app_ale_params}
 All Atari-5 experiments use \texttt{ale\_py}'s vectorized ALE interface, \texttt{AtariVectorEnv}, with a single environment instance (\texttt{num\_envs = 1}). Table~\ref{tab:ale_params} lists every configurable parameter of \texttt{AtariVectorEnv} and the value used in this work.
 
@@ -1258,6 +1268,7 @@ Adam $\epsilon$ & $0.00001$ & $0.00001$ \\
 \label{tab:ppo_hypers}
 \end{table}
 
+\FloatBarrier
 \section{Line Search and Trust Region Hyperparameters} \label{app_globalization_hypers}
 Tables~\ref{tab:ls_hypers} and~\ref{tab:tr_hypers} report hyperparameters for the line search and trust-region methods, respectively. None of these values were tuned.
 
@@ -1303,6 +1314,7 @@ Gain-ratio window $K$ (updates) & 37 & 500 & 5 & 5 \\
 \label{tab:tr_hypers}
 \end{table}
 
+\FloatBarrier
 \section{Grid Search Ranges For Cross Environment Tuning} \label{app_tuning_ranges}
 For each environment suite, algorithm, and optimizer, we perform a grid search over the range of candidate step sizes given in Table~\ref{tab:tuning_ranges} to obtain the \textit{Tuned N} baselines described in Section~\ref{sec:dqn_results}, where $N$ denotes the batch size used. Table~\ref{tab:tuned_n} reports the selected fixed step size for each environment suite, algorithm, and optimizer. 
 
@@ -1346,6 +1358,7 @@ Brax & PPO & Adam & false & 64, 1024 & $3\mathrm{e}{-4}$ \\
 \label{tab:tuned_n}
 \end{table}
 
+\FloatBarrier
 We tune the SAM perturbation radius $\kappa$ using the range given in Table~\ref{tab:sam_tuning_range}. The search is repeated for PALS, GRASS, and both tuned fixed step size baselines, though the selected value of $0.05$, which matches the default recommended by \tocite{SAM paper}, was the same for all methods.
 
 \begin{table}[htbp]
